@@ -120,6 +120,12 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
 @media (hover: none) { .entry .x { opacity: 1; } }
 .entry.editing { background: var(--soft); border-radius: 8px; }
 .entry .d { cursor: pointer; }
+.entry .amt.in { color: var(--accent); }
+.seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; justify-self: start; }
+.seg button { border: 0; background: transparent; padding: 7px 16px; border-radius: 8px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.stats .v.pos { color: var(--accent); }
+.stats .v.neg { color: var(--danger); }
 .empty { text-align: center; padding: 36px 12px; color: var(--muted); display: grid; gap: 6px; }
 .empty b { color: var(--ink); font-weight: 600; }
 
@@ -151,13 +157,19 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     <div class="label" id="totalLabel">Spent this month</div>
     <div class="total" id="total">—</div>
     <div class="stats">
+      <div><span class="label">Income</span><span class="v" id="sIncome">—</span></div>
+      <div><span class="label">Balance</span><span class="v" id="sBal">—</span></div>
       <div><span class="label">Today</span><span class="v" id="sToday">—</span></div>
       <div><span class="label">Daily average</span><span class="v" id="sAvg">—</span></div>
       <div><span class="label">Entries</span><span class="v" id="sCount">—</span></div>
     </div>
   </section>
 
-  <form class="card" id="form" autocomplete="off" aria-label="Add an expense">
+  <form class="card" id="form" autocomplete="off" aria-label="Add an entry">
+    <div class="seg" role="group" aria-label="Entry type">
+      <button type="button" id="kindExp" aria-pressed="true">Expense</button>
+      <button type="button" id="kindInc" aria-pressed="false">Income</button>
+    </div>
     <div class="amountrow">
       <span class="cur" id="curSym">₹</span>
       <input id="amount" inputmode="decimal" placeholder="0" aria-label="Amount" required>
@@ -167,11 +179,11 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
       <input class="field" id="date" type="date" aria-label="Date">
     </div>
     <div class="group">
-      <span class="label">Category</span>
+      <span class="label" id="catLabel">Category</span>
       <div class="chips" id="cats"></div>
     </div>
     <div class="group">
-      <span class="label">Paid by</span>
+      <span class="label" id="payerLabel">Paid by</span>
       <div class="chips" id="payers"></div>
       <p class="hint" id="payerHint" hidden>Add yourself and your family below to choose who paid.</p>
     </div>
@@ -188,10 +200,15 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
       <div class="bars" id="catBars"></div>
     </div>
     <div class="group">
-      <h2>By person</h2>
-      <div class="stack" id="memberStack"></div>
-      <div class="bars" id="memberBars"></div>
+      <h2>Income by source</h2>
+      <div class="bars" id="srcBars"></div>
     </div>
+  </section>
+
+  <section class="group" aria-label="Spending by person">
+    <h2>Spending by person</h2>
+    <div class="stack" id="memberStack"></div>
+    <div class="bars" id="memberBars"></div>
   </section>
 
   <section class="group">
@@ -233,6 +250,8 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
 <script>
 (() => {
   const CATS = ["Groceries", "Food & dining", "Transport", "Bills & utilities", "Rent & home", "Shopping", "Health", "Kids & school", "Entertainment", "Travel", "Gifts", "Other"];
+  const SOURCES = ["Salary", "Business", "Freelance", "Rental", "Interest & dividends", "Pension", "Gifts received", "Refunds", "Other income"];
+  const isIncome = (e) => e.type === "income";
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
@@ -245,7 +264,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     db: null, canWrite: true, uid: null,
     year: now.getFullYear(), month: now.getMonth(),
     expenses: [], members: [], currency: "INR",
-    cat: "Groceries", payer: null, filter: "all", editingId: null,
+    kind: "expense", cat: "Groceries", src: "Salary", payer: null, filter: "all", editingId: null,
     loaded: false, unsubMonth: null,
   };
 
@@ -292,28 +311,44 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     $("currency").value = state.currency;
   }
 
-  function visibleExpenses() {
+  // every entry (expenses and income) for the chosen person
+  function visibleEntries() {
     return state.filter === "all" ? state.expenses : state.expenses.filter((e) => e.by === state.filter);
   }
+  const visibleExpenses = () => visibleEntries().filter((e) => !isIncome(e));
+  const visibleIncome = () => visibleEntries().filter(isIncome);
+  const sum = (list) => list.reduce((s, e) => s + (e.amount || 0), 0);
 
   function renderSummary() {
     const list = visibleExpenses();
-    const total = list.reduce((s, e) => s + (e.amount || 0), 0);
+    const total = sum(list);
+    const income = sum(visibleIncome());
     const { days } = monthRange();
     const elapsed = isCurrentMonth() ? new Date().getDate() : days;
-    const today = list.filter((e) => e.date === todayIso()).reduce((s, e) => s + e.amount, 0);
+    const today = sum(list.filter((e) => e.date === todayIso()));
     $("total").textContent = state.loaded ? fmt(total) : "—";
+    $("sIncome").textContent = state.loaded ? fmt(income) : "—";
+    const bal = income - total;
+    $("sBal").textContent = state.loaded ? (bal < 0 ? "−" : "") + fmt(Math.abs(bal)) : "—";
+    $("sBal").className = "v" + (state.loaded && income ? (bal < 0 ? " neg" : " pos") : "");
     $("sToday").textContent = state.loaded ? (isCurrentMonth() ? fmt(today) : "—") : "—";
     $("sAvg").textContent = state.loaded ? fmt(total / Math.max(1, elapsed)) : "—";
     $("sCount").textContent = state.loaded ? String(list.length) : "—";
   }
 
   function renderChips() {
+    const inc = state.kind === "income";
+    $("kindExp").setAttribute("aria-pressed", String(!inc));
+    $("kindInc").setAttribute("aria-pressed", String(inc));
+    $("catLabel").textContent = inc ? "Source" : "Category";
+    $("payerLabel").textContent = inc ? "Received by" : "Paid by";
+    $("note").placeholder = inc ? "Where did it come from?" : "What was it for?";
+    if (!state.editingId) $("save").textContent = inc ? "Add income" : "Add expense";
     const cats = $("cats"); cats.replaceChildren();
-    CATS.forEach((c) => {
+    (inc ? SOURCES : CATS).forEach((c) => {
       const b = el("button", "chip", c); b.type = "button";
-      b.setAttribute("aria-pressed", String(state.cat === c));
-      b.onclick = () => { state.cat = c; renderChips(); };
+      b.setAttribute("aria-pressed", String((inc ? state.src : state.cat) === c));
+      b.onclick = () => { if (inc) state.src = c; else state.cat = c; renderChips(); };
       cats.append(b);
     });
 
@@ -364,7 +399,14 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
       catBars.append(bar(`${cats.length - 6} more`, rest, max, "var(--muted)"));
     }
 
-    const all = state.expenses;
+    const srcBars = $("srcBars"); srcBars.replaceChildren();
+    const bySrc = {};
+    visibleIncome().forEach((e) => { bySrc[e.category] = (bySrc[e.category] || 0) + e.amount; });
+    const srcs = Object.entries(bySrc).sort((a, b) => b[1] - a[1]);
+    if (!srcs.length) srcBars.append(el("p", "hint", state.loaded ? "No income recorded this month. Switch the form to Income to add some." : "…"));
+    srcs.forEach(([c, v]) => srcBars.append(bar(c, v, srcs[0][1])));
+
+    const all = state.expenses.filter((e) => !isIncome(e));
     const byM = {};
     all.forEach((e) => { byM[e.by || "_"] = (byM[e.by || "_"] || 0) + e.amount; });
     const total = all.reduce((s, e) => s + e.amount, 0);
@@ -391,11 +433,11 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
   function renderLedger() {
     const box = $("ledger"); box.replaceChildren();
     if (!state.loaded) { box.append(emptyBox("Loading your register…")); return; }
-    const list = visibleExpenses();
+    const list = visibleEntries();
     if (!list.length) {
       box.append(emptyBox(
-        isCurrentMonth() ? "No expenses yet this month" : "No expenses this month",
-        isCurrentMonth() ? "Type an amount above and press Add expense. Your entries show here, grouped by day." : "Use the arrows at the top to move between months."
+        isCurrentMonth() ? "No entries yet this month" : "No entries this month",
+        isCurrentMonth() ? "Type an amount above and press Add expense, or switch to Income. Your entries show here, grouped by day." : "Use the arrows at the top to move between months."
       ));
       return;
     }
@@ -407,7 +449,12 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
       const h = el("div", "dayhead");
       const dd = new Date(date + "T00:00:00");
       const label = date === todayIso() ? "Today" : date === iso(new Date(Date.now() - 864e5)) ? "Yesterday" : dd.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
-      h.append(el("span", null, label), el("span", "num", fmt(items.reduce((s, e) => s + e.amount, 0))));
+      const spent = sum(items.filter((e) => !isIncome(e)));
+      const got = sum(items.filter(isIncome));
+      const parts = [];
+      if (got) parts.push("+" + fmt(got));
+      if (spent || !got) parts.push(fmt(spent));
+      h.append(el("span", null, label), el("span", "num", parts.join("  ·  ")));
       day.append(h);
       items.forEach((e) => day.append(entryRow(e)));
       box.append(day);
@@ -428,7 +475,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     d.onclick = () => startEdit(e);
     d.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); startEdit(e); } };
     const right = el("div", "r");
-    right.append(el("span", "amt", fmt(e.amount)));
+    right.append(isIncome(e) ? el("span", "amt in", "+" + fmt(e.amount)) : el("span", "amt", fmt(e.amount)));
     if (state.canWrite) {
       const x = el("button", "ghost x", "Delete"); x.type = "button";
       let timer;
@@ -452,12 +499,13 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     const box = $("members"); box.replaceChildren();
     const ms = activeMembers();
     if (!ms.length) { box.append(el("p", "hint", state.loaded ? "Start with your own name, then add your spouse, children or anyone else who spends from the family budget." : "…")); }
-    const spent = {};
-    state.expenses.forEach((e) => { spent[e.by] = (spent[e.by] || 0) + e.amount; });
+    const spent = {}, earned = {};
+    state.expenses.forEach((e) => { const t = isIncome(e) ? earned : spent; t[e.by] = (t[e.by] || 0) + e.amount; });
     ms.forEach((m) => {
       const row = el("div", "member");
       const dot = el("span", "dot"); dot.style.background = colorFor(m);
-      row.append(dot, el("span", "n", m.name), el("span", "s", fmt(spent[m.id] || 0, true)));
+      const s = (earned[m.id] ? "+" + fmt(earned[m.id], true) + " · " : "") + fmt(spent[m.id] || 0, true) + " spent";
+      row.append(dot, el("span", "n", m.name), el("span", "s", s));
       if (state.canWrite) {
         const x = el("button", "ghost", "Remove"); x.type = "button";
         let timer;
@@ -492,14 +540,19 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
   function resetForm() {
     state.editingId = null;
     $("amount").value = ""; $("note").value = ""; $("date").value = todayIso();
-    $("save").textContent = "Add expense"; $("cancelEdit").hidden = true; $("formErr").hidden = true;
-    renderLedger();
+    $("cancelEdit").hidden = true; $("formErr").hidden = true;
+    renderChips(); renderLedger();
   }
+  function setKind(k) { if (state.editingId || state.kind === k) return; state.kind = k; renderChips(); }
+  $("kindExp").onclick = () => setKind("expense");
+  $("kindInc").onclick = () => setKind("income");
   function startEdit(e) {
     if (!state.canWrite) return;
     state.editingId = e.id;
     $("amount").value = String(e.amount); $("note").value = e.note || ""; $("date").value = e.date;
-    state.cat = CATS.includes(e.category) ? e.category : "Other";
+    state.kind = isIncome(e) ? "income" : "expense";
+    if (isIncome(e)) state.src = SOURCES.includes(e.category) ? e.category : "Other income";
+    else state.cat = CATS.includes(e.category) ? e.category : "Other";
     if (e.by && memberById(e.by)) state.payer = e.by;
     $("save").textContent = "Save changes"; $("cancelEdit").hidden = false;
     renderChips(); renderLedger();
@@ -516,8 +569,9 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     if (!(amount > 0)) { err.textContent = "Enter an amount greater than zero."; err.hidden = false; $("amount").focus(); return; }
     const date = $("date").value || todayIso();
     err.hidden = true;
+    const inc = state.kind === "income";
     const body = {
-      amount, date, category: state.cat, note: $("note").value.trim().slice(0, 80),
+      type: state.kind, amount, date, category: inc ? state.src : state.cat, note: $("note").value.trim().slice(0, 80),
       by: state.payer || null,
     };
     $("save").disabled = true;
@@ -527,7 +581,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
         toast("Saved");
       } else {
         await state.db.collection("expenses").add({ ...body, createdAt: Date.now(), createdBy: state.uid || null });
-        toast("Added " + fmt(amount));
+        toast((inc ? "Added income " : "Added ") + fmt(amount));
         // jump to the entry's month if it was logged elsewhere
         const [y, m] = date.split("-").map(Number);
         if (y !== state.year || m - 1 !== state.month) { state.year = y; state.month = m - 1; subscribeMonth(); }
