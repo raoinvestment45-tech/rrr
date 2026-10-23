@@ -41,7 +41,7 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 28px 64px;
 }
-.wrap { max-width: 680px; margin: 0 auto; display: grid; gap: 28px; }
+.wrap { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -67,7 +67,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
 .stats .v { font-family: var(--font-num); font-size: 16px; }
 
 /* Card */
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 
 /* Add form */
 .amountrow { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
@@ -82,7 +82,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
 .chip:hover { border-color: var(--muted); }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.group { display: grid; gap: 8px; }
+.group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 .btn { border: 0; border-radius: 9px; padding: 11px 20px; font-weight: 600; background: var(--accent); color: var(--accent-ink); }
 .btn:disabled { opacity: .45; cursor: default; }
@@ -121,6 +121,13 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
 .entry.editing { background: var(--soft); border-radius: 8px; }
 .entry .d { cursor: pointer; }
 .entry .amt.in { color: var(--accent); }
+.entry .amt.tr { color: var(--muted); }
+.debts { display: grid; gap: 2px; }
+.debt { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--soft); flex-wrap: wrap; }
+.debt .who2 { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.debt .who2 b { font-weight: 600; }
+.debt .amt { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: 600; }
+.debt .ghost { color: var(--accent); }
 .seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; justify-self: start; }
 .seg button { border: 0; background: transparent; padding: 7px 16px; border-radius: 8px; font-weight: 500; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
@@ -140,7 +147,9 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .openform { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 0 12px; border-bottom: 1px solid var(--soft); }
 .openform .hint { flex-basis: 100%; }
 .openform .field { width: 150px; flex: 1 1 130px; }
-.member .s { white-space: nowrap; }
+.member { flex-wrap: wrap; }
+.member .n { flex: 1 1 100px; }
+.member .s { white-space: nowrap; padding-inline: 6px; }
 .empty { text-align: center; padding: 36px 12px; color: var(--muted); display: grid; gap: 6px; }
 .empty b { color: var(--ink); font-weight: 600; }
 
@@ -185,6 +194,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     <div class="seg" role="group" aria-label="Entry type">
       <button type="button" id="kindExp" aria-pressed="true">Expense</button>
       <button type="button" id="kindInc" aria-pressed="false">Income</button>
+      <button type="button" id="kindTr" aria-pressed="false">Transfer</button>
     </div>
     <div class="amountrow">
       <span class="cur" id="curSym">₹</span>
@@ -203,6 +213,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       <div class="chips" id="payers"></div>
       <p class="hint" id="payerHint" hidden>Add yourself and your family below to choose who paid.</p>
     </div>
+    <div class="group" id="toGroup" hidden>
+      <span class="label">To</span>
+      <div class="chips" id="toChips"></div>
+      <p class="hint" id="trHint"></p>
+    </div>
     <p class="err" id="formErr" hidden></p>
     <div class="actions">
       <button type="button" class="ghost" id="cancelEdit" hidden>Cancel</button>
@@ -218,11 +233,19 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     <div class="stats" id="balLine"></div>
     <div class="tablewrap">
       <table class="bal">
-        <thead><tr><th scope="col">Day</th><th scope="col">Opening</th><th scope="col">Received</th><th scope="col">Spent</th><th scope="col">Closing</th></tr></thead>
+        <thead><tr><th scope="col">Day</th><th scope="col">Opening</th><th scope="col">Money in</th><th scope="col">Money out</th><th scope="col">Closing</th></tr></thead>
         <tbody id="balBody"></tbody>
       </table>
     </div>
-    <p class="hint">Closing = opening + money received − money spent. Set each person's starting amount under Family.</p>
+    <p class="hint">Closing = opening + money in − money out. Money in and out include transfers between family members. Set each person's starting amount under Family.</p>
+  </section>
+
+  <section class="group" aria-label="Who owes whom">
+    <div class="ledhead">
+      <h2>Who owes whom</h2>
+      <span class="hint">All time, from loans and repayments</span>
+    </div>
+    <div class="debts" id="debts"></div>
   </section>
 
   <section class="split" id="breakdown" aria-label="Breakdown">
@@ -279,7 +302,10 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 (() => {
   const CATS = ["Groceries", "Food & dining", "Transport", "Bills & utilities", "Rent & home", "Shopping", "Health", "Kids & school", "Entertainment", "Travel", "Gifts", "Other"];
   const SOURCES = ["Salary", "Business", "Freelance", "Rental", "Interest & dividends", "Pension", "Gifts received", "Refunds", "Other income"];
+  const TRANSFER_TYPES = ["Loan", "Repayment", "Gift / allowance"];
   const isIncome = (e) => e.type === "income";
+  const isTransfer = (e) => e.type === "transfer";
+  const isExpense = (e) => !isIncome(e) && !isTransfer(e);
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
@@ -292,7 +318,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     db: null, canWrite: true, uid: null,
     year: now.getFullYear(), month: now.getMonth(),
     expenses: [], members: [], currency: "INR",
-    kind: "expense", cat: "Groceries", src: "Salary", payer: null, filter: "all", editingId: null,
+    kind: "expense", cat: "Groceries", src: "Salary", ttype: "Loan", to: null, payer: null, transfers: [], filter: "all", editingId: null,
     loaded: false, unsubMonth: null, prior: {}, editingMember: null,
   };
 
@@ -341,9 +367,9 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
   // every entry (expenses and income) for the chosen person
   function visibleEntries() {
-    return state.filter === "all" ? state.expenses : state.expenses.filter((e) => e.by === state.filter);
+    return state.filter === "all" ? state.expenses : state.expenses.filter((e) => e.by === state.filter || (isTransfer(e) && e.to === state.filter));
   }
-  const visibleExpenses = () => visibleEntries().filter((e) => !isIncome(e));
+  const visibleExpenses = () => visibleEntries().filter(isExpense);
   const visibleIncome = () => visibleEntries().filter(isIncome);
   const sum = (list) => list.reduce((s, e) => s + (e.amount || 0), 0);
 
@@ -365,18 +391,21 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   }
 
   function renderChips() {
-    const inc = state.kind === "income";
-    $("kindExp").setAttribute("aria-pressed", String(!inc));
+    const inc = state.kind === "income", tr = state.kind === "transfer";
+    $("kindExp").setAttribute("aria-pressed", String(state.kind === "expense"));
     $("kindInc").setAttribute("aria-pressed", String(inc));
-    $("catLabel").textContent = inc ? "Source" : "Category";
-    $("payerLabel").textContent = inc ? "Received by" : "Paid by";
-    $("note").placeholder = inc ? "Where did it come from?" : "What was it for?";
-    if (!state.editingId) $("save").textContent = inc ? "Add income" : "Add expense";
+    $("kindTr").setAttribute("aria-pressed", String(tr));
+    $("catLabel").textContent = tr ? "Type" : inc ? "Source" : "Category";
+    $("payerLabel").textContent = tr ? "From" : inc ? "Received by" : "Paid by";
+    $("note").placeholder = tr ? "Note, e.g. for school fees" : inc ? "Where did it come from?" : "What was it for?";
+    if (!state.editingId) $("save").textContent = tr ? "Record transfer" : inc ? "Add income" : "Add expense";
     const cats = $("cats"); cats.replaceChildren();
-    (inc ? SOURCES : CATS).forEach((c) => {
+    const opts = tr ? TRANSFER_TYPES : inc ? SOURCES : CATS;
+    const cur = tr ? state.ttype : inc ? state.src : state.cat;
+    opts.forEach((c) => {
       const b = el("button", "chip", c); b.type = "button";
-      b.setAttribute("aria-pressed", String((inc ? state.src : state.cat) === c));
-      b.onclick = () => { if (inc) state.src = c; else state.cat = c; renderChips(); };
+      b.setAttribute("aria-pressed", String(cur === c));
+      b.onclick = () => { if (tr) state.ttype = c; else if (inc) state.src = c; else state.cat = c; renderChips(); };
       cats.append(b);
     });
 
@@ -392,6 +421,24 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       payers.append(b);
     });
     $("payerHint").hidden = ms.length > 0;
+
+    $("toGroup").hidden = !tr;
+    const toChips = $("toChips"); toChips.replaceChildren();
+    const others = ms.filter((m) => m.id !== state.payer);
+    if (!others.some((m) => m.id === state.to)) state.to = others.length ? others[0].id : null;
+    others.forEach((m) => {
+      const b = el("button", "chip"); b.type = "button";
+      const dot = el("span", "dot"); dot.style.background = colorFor(m);
+      b.append(dot, document.createTextNode(m.name));
+      b.setAttribute("aria-pressed", String(state.to === m.id));
+      b.onclick = () => { state.to = m.id; renderChips(); };
+      toChips.append(b);
+    });
+    const fromN = (memberById(state.payer) || {}).name, toN = (memberById(state.to) || {}).name;
+    $("trHint").textContent = ms.length < 2 ? "Add at least two family members to record transfers between them."
+      : state.ttype === "Loan" ? `${toN} will owe ${fromN} this amount.`
+      : state.ttype === "Repayment" ? `${fromN} is paying back ${toN}. This reduces what ${fromN} owes.`
+      : `Moves money from ${fromN} to ${toN}. Nobody owes anything.`;
 
     const filter = $("filter"); filter.replaceChildren();
     if (ms.length > 1) {
@@ -434,7 +481,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     if (!srcs.length) srcBars.append(el("p", "hint", state.loaded ? "No income recorded this month. Switch the form to Income to add some." : "…"));
     srcs.forEach(([c, v]) => srcBars.append(bar(c, v, srcs[0][1])));
 
-    const all = state.expenses.filter((e) => !isIncome(e));
+    const all = state.expenses.filter(isExpense);
     const byM = {};
     all.forEach((e) => { byM[e.by || "_"] = (byM[e.by || "_"] || 0) + e.amount; });
     const total = all.reduce((s, e) => s + e.amount, 0);
@@ -477,7 +524,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       const h = el("div", "dayhead");
       const dd = new Date(date + "T00:00:00");
       const label = date === todayIso() ? "Today" : date === iso(new Date(Date.now() - 864e5)) ? "Yesterday" : dd.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
-      const spent = sum(items.filter((e) => !isIncome(e)));
+      const spent = sum(items.filter(isExpense));
       const got = sum(items.filter(isIncome));
       const parts = [];
       if (got) parts.push("+" + fmt(got));
@@ -495,15 +542,18 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
   function entryRow(e) {
     const m = memberById(e.by);
+    const toM = isTransfer(e) ? memberById(e.to) : null;
+    const nm = (x) => (x ? x.name : "Unassigned");
     const r = el("div", "entry" + (state.editingId === e.id ? " editing" : ""));
     const who = el("div", "who", m ? initials(m.name) : "?"); who.style.background = colorFor(m);
     who.title = m ? m.name : "Unassigned";
     const d = el("div", "d"); d.tabIndex = 0; d.setAttribute("role", "button"); d.setAttribute("aria-label", "Edit " + (e.note || e.category));
-    d.append(el("b", null, e.note || e.category), el("span", null, e.note ? `${e.category} · ${m ? m.name : "Unassigned"}` : (m ? m.name : "Unassigned")));
+    if (isTransfer(e)) d.append(el("b", null, e.note || `${e.category} to ${nm(toM)}`), el("span", null, `${nm(m)} → ${nm(toM)} · ${e.category}`));
+    else d.append(el("b", null, e.note || e.category), el("span", null, e.note ? `${e.category} · ${nm(m)}` : nm(m)));
     d.onclick = () => startEdit(e);
     d.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); startEdit(e); } };
     const right = el("div", "r");
-    right.append(isIncome(e) ? el("span", "amt in", "+" + fmt(e.amount)) : el("span", "amt", fmt(e.amount)));
+    right.append(isIncome(e) ? el("span", "amt in", "+" + fmt(e.amount)) : isTransfer(e) ? el("span", "amt tr", "⇄ " + fmt(e.amount)) : el("span", "amt", fmt(e.amount)));
     if (state.canWrite) {
       const x = el("button", "ghost x", "Delete"); x.type = "button";
       let timer;
@@ -623,7 +673,17 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       } catch (e) { if (token === balToken) msg("Couldn't load earlier months. Reload to try again."); return; }
       if (token !== balToken) return;
     }
-    const net = (e) => (isIncome(e) ? e.amount : -e.amount);
+    // money in/out of one person's pocket; transfers between two people shown together cancel out
+    const ids = new Set(people.map((p) => p.id));
+    const flow = (e, pid) => {
+      if (isTransfer(e)) {
+        if (people.length > 1 && ids.has(e.by) && ids.has(e.to)) return [0, 0];
+        return e.to === pid ? [e.amount, 0] : e.by === pid ? [0, e.amount] : [0, 0];
+      }
+      if (e.by !== pid) return [0, 0];
+      return isIncome(e) ? [e.amount, 0] : [0, e.amount];
+    };
+    const mine = (e, pid) => e.by === pid || (isTransfer(e) && e.to === pid);
 
     const days = [];
     for (let d = new Date(start + "T00:00:00"); iso(d) <= lastDay; d.setDate(d.getDate() + 1)) days.push(iso(d));
@@ -634,11 +694,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       const o = opening(p);
       if (o.date > lastDay) return;
       let bal = o.amount;
-      if (o.date < start) prior.forEach((e) => { if (e.by === p.id && e.date >= o.date && e.date < start) bal += net(e); });
+      if (o.date < start) prior.forEach((e) => { if (mine(e, p.id) && e.date >= o.date && e.date < start) { const [i, x] = flow(e, p.id); bal += i - x; } });
       days.forEach((d) => {
         if (d < o.date) return;
-        const todays = state.expenses.filter((e) => e.by === p.id && e.date === d);
-        const inc = sum(todays.filter(isIncome)), out = sum(todays.filter((e) => !isIncome(e)));
+        const todays = state.expenses.filter((e) => e.date === d && mine(e, p.id));
+        let inc = 0, out = 0;
+        todays.forEach((e) => { const [i, x] = flow(e, p.id); inc += i; out += x; });
         const r = rows[d];
         r.open += bal; r.in += inc; r.out += out; bal += inc - out; r.close += bal;
         r.active = true; r.has = r.has || todays.length > 0;
@@ -670,8 +731,52 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     );
   }
 
+  function renderDebts() {
+    const box = $("debts"); box.replaceChildren();
+    if (!state.loaded) { box.append(el("p", "hint", "…")); return; }
+    // owed[a][b] > 0 means a owes b
+    const owed = {};
+    const add = (a, b, v) => { owed[a] = owed[a] || {}; owed[a][b] = (owed[a][b] || 0) + v; };
+    state.transfers.forEach((e) => {
+      if (!e.by || !e.to || e.by === e.to) return;
+      if (e.category === "Loan") { add(e.to, e.by, e.amount); add(e.by, e.to, -e.amount); }
+      else if (e.category === "Repayment") { add(e.by, e.to, -e.amount); add(e.to, e.by, e.amount); }
+    });
+    const rows = [];
+    Object.keys(owed).forEach((a) => Object.keys(owed[a]).forEach((b) => {
+      const v = Math.round(owed[a][b] * 100) / 100;
+      if (v > 0) rows.push({ a, b, v });
+    }));
+    const shown = state.filter === "all" ? rows : rows.filter((r) => r.a === state.filter || r.b === state.filter);
+    if (!shown.length) {
+      box.append(el("p", "hint", state.transfers.length ? "Everyone is square. No loans are outstanding." : "Nobody owes anything yet. Record a Loan with the Transfer option above and it shows here until it's repaid."));
+      return;
+    }
+    shown.sort((x, y) => y.v - x.v).forEach(({ a, b, v }) => {
+      const ma = memberById(a), mb = memberById(b);
+      const row = el("div", "debt");
+      const w = el("span", "who2");
+      const da = el("span", "dot"); da.style.background = colorFor(ma);
+      w.append(da, el("b", null, ma ? ma.name : "Someone"), document.createTextNode(" owes "), el("b", null, mb ? mb.name : "someone"));
+      row.append(w, el("span", "amt", fmt(v)));
+      if (state.canWrite && ma && mb && !ma.archived && !mb.archived) {
+        const settle = el("button", "ghost", "Record repayment"); settle.type = "button";
+        settle.onclick = () => {
+          if (state.editingId) resetForm();
+          state.kind = "transfer"; state.ttype = "Repayment"; state.payer = a; state.to = b;
+          $("amount").value = String(v); $("note").value = "";
+          renderChips();
+          $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+          $("amount").focus({ preventScroll: true });
+        };
+        row.append(settle);
+      }
+      box.append(row);
+    });
+  }
+
   function renderAll() {
-    renderHeader(); renderChips(); renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance();
+    renderHeader(); renderChips(); renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
     const ro = !state.canWrite;
     ["amount", "note", "date", "save", "memberName", "currency"].forEach((id) => { $(id).disabled = ro || !state.db; });
     document.querySelector("#memberForm .btn").disabled = ro || !state.db;
@@ -691,14 +796,17 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   function setKind(k) { if (state.editingId || state.kind === k) return; state.kind = k; renderChips(); }
   $("kindExp").onclick = () => setKind("expense");
   $("kindInc").onclick = () => setKind("income");
+  $("kindTr").onclick = () => setKind("transfer");
   function startEdit(e) {
     if (!state.canWrite) return;
     state.editingId = e.id;
     $("amount").value = String(e.amount); $("note").value = e.note || ""; $("date").value = e.date;
-    state.kind = isIncome(e) ? "income" : "expense";
-    if (isIncome(e)) state.src = SOURCES.includes(e.category) ? e.category : "Other income";
+    state.kind = isIncome(e) ? "income" : isTransfer(e) ? "transfer" : "expense";
+    if (isTransfer(e)) { state.ttype = TRANSFER_TYPES.includes(e.category) ? e.category : "Gift / allowance"; state.to = e.to; }
+    else if (isIncome(e)) state.src = SOURCES.includes(e.category) ? e.category : "Other income";
     else state.cat = CATS.includes(e.category) ? e.category : "Other";
     if (e.by && memberById(e.by)) state.payer = e.by;
+    if (isTransfer(e)) state.to = e.to;
     $("save").textContent = "Save changes"; $("cancelEdit").hidden = false;
     renderChips(); renderLedger();
     $("form").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -714,10 +822,13 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     if (!(amount > 0)) { err.textContent = "Enter an amount greater than zero."; err.hidden = false; $("amount").focus(); return; }
     const date = $("date").value || todayIso();
     err.hidden = true;
-    const inc = state.kind === "income";
+    const inc = state.kind === "income", tr = state.kind === "transfer";
+    if (tr && (!state.payer || !state.to || state.payer === state.to)) {
+      err.textContent = "Choose two different people for a transfer."; err.hidden = false; return;
+    }
     const body = {
-      type: state.kind, amount, date, category: inc ? state.src : state.cat, note: $("note").value.trim().slice(0, 80),
-      by: state.payer || null,
+      type: state.kind, amount, date, category: tr ? state.ttype : inc ? state.src : state.cat, note: $("note").value.trim().slice(0, 80),
+      by: state.payer || null, to: tr ? state.to : null,
     };
     $("save").disabled = true;
     try {
@@ -729,7 +840,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
         toast("Saved");
       } else {
         await state.db.collection("expenses").add({ ...body, createdAt: Date.now(), createdBy: state.uid || null });
-        toast((inc ? "Added income " : "Added ") + fmt(amount));
+        toast((tr ? "Recorded transfer of " : inc ? "Added income " : "Added ") + fmt(amount));
         // jump to the entry's month if it was logged elsewhere
         const [y, m] = date.split("-").map(Number);
         if (y !== state.year || m - 1 !== state.month) { state.year = y; state.month = m - 1; subscribeMonth(); }
@@ -792,7 +903,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
         state.expenses = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => typeof e.amount === "number");
         state.loaded = true;
         state.prior[start.slice(0, 7)] = state.expenses;
-        renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance();
+        renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
       }, () => { state.loaded = true; renderAll(); });
   }
 
@@ -817,11 +928,15 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     }
     db.collection("members").onSnapshot((snap) => {
       state.members = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => typeof m.name === "string");
-      renderChips(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance();
+      renderChips(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
     });
     db.doc("settings/main").onSnapshot((snap) => {
       const c = snap.exists && snap.data().currency;
       if (c && c !== state.currency) { state.currency = c; fmtCache = {}; renderAll(); }
+    });
+    db.collection("expenses").where("type", "==", "transfer").limit(1000).onSnapshot((snap) => {
+      state.transfers = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => typeof e.amount === "number");
+      renderDebts();
     });
     subscribeMonth();
   })();
