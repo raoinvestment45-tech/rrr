@@ -1,0 +1,626 @@
+<title>Family Expense Register</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one calm column — month summary, quick-add, breakdown, day-grouped ledger, family. */
+:root {
+  --bg: #f5f6f3;
+  --surface: #ffffff;
+  --ink: #1a1f1c;
+  --muted: #69716c;
+  --line: #e2e5e0;
+  --soft: #eef0ec;
+  --accent: #2c6a4d;
+  --accent-ink: #ffffff;
+  --danger: #b4412f;
+  --m1: #2c6a4d; --m2: #c0703a; --m3: #4a64b0; --m4: #a14a7f; --m5: #6f8a2a; --m6: #2f8a94; --m7: #8a6b2f; --m8: #7059b8;
+  --font-ui: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111412; --surface: #191d1a; --ink: #e7ebe8; --muted: #959d98; --line: #2a302c; --soft: #212622;
+    --accent: #72c39b; --accent-ink: #0f1a14; --danger: #e48573;
+    --m1: #72c39b; --m2: #e3a272; --m3: #8fa6ee; --m4: #dd8dbd; --m5: #aac868; --m6: #6cc7d0; --m7: #d0b071; --m8: #ad9af0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111412; --surface: #191d1a; --ink: #e7ebe8; --muted: #959d98; --line: #2a302c; --soft: #212622;
+  --accent: #72c39b; --accent-ink: #0f1a14; --danger: #e48573;
+  --m1: #72c39b; --m2: #e3a272; --m3: #8fa6ee; --m4: #dd8dbd; --m5: #aac868; --m6: #6cc7d0; --m7: #d0b071; --m8: #ad9af0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 680px; margin: 0 auto; display: grid; gap: 28px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 500; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; margin: 0; }
+
+/* Header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+.brand small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
+.monthnav { display: flex; align-items: center; gap: 4px; }
+.iconbtn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; }
+.iconbtn:hover { border-color: var(--muted); }
+.iconbtn:disabled { opacity: .35; cursor: default; }
+.monthnav .m { min-width: 128px; text-align: center; font-weight: 600; }
+
+/* Summary */
+.summary { display: grid; gap: 14px; }
+.total { font-family: var(--font-num); font-size: clamp(36px, 9vw, 52px); font-weight: 500; letter-spacing: -.03em; line-height: 1; }
+.stats { display: flex; gap: 28px; flex-wrap: wrap; }
+.stats div { display: grid; gap: 2px; }
+.stats .v { font-family: var(--font-num); font-size: 16px; }
+
+/* Card */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 16px; }
+
+/* Add form */
+.amountrow { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.amountrow .cur { font-family: var(--font-num); font-size: 22px; color: var(--muted); }
+#amount { font-family: var(--font-num); font-size: 30px; border: 0; background: transparent; width: 100%; min-width: 0; padding: 0; outline: none; }
+#amount::placeholder { color: var(--line); }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.field { border: 1px solid var(--line); background: var(--bg); border-radius: 9px; padding: 10px 12px; min-width: 0; width: 100%; }
+.field:focus { outline: none; border-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 6px 12px; font-size: 13.5px; display: inline-flex; align-items: center; gap: 7px; }
+.chip:hover { border-color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.group { display: grid; gap: 8px; }
+.actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.btn { border: 0; border-radius: 9px; padding: 11px 20px; font-weight: 600; background: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+.ghost { border: 0; background: transparent; color: var(--muted); padding: 8px 10px; border-radius: 8px; }
+.ghost:hover { color: var(--ink); background: var(--soft); }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.err { color: var(--danger); font-size: 13px; margin: 0; }
+
+/* Breakdown */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+@media (max-width: 560px) { .split { grid-template-columns: 1fr; } }
+.bars { display: grid; gap: 10px; }
+.bar { display: grid; gap: 5px; }
+.bar .t { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+.bar .t span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track { height: 6px; background: var(--soft); border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; border-radius: 3px; background: var(--accent); }
+.stack { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--soft); gap: 2px; }
+
+/* Ledger */
+.ledger { display: grid; gap: 22px; }
+.ledhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.day { display: grid; gap: 2px; }
+.dayhead { display: flex; justify-content: space-between; padding: 0 2px 6px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.entry { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--soft); }
+.entry .who { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--bg); }
+.entry .d { min-width: 0; }
+.entry .d b { font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry .d span { font-size: 12.5px; color: var(--muted); }
+.entry .r { display: flex; align-items: center; gap: 4px; }
+.entry .amt { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.entry .x { opacity: 0; transition: opacity .15s; font-size: 12.5px; padding: 4px 8px; }
+.entry:hover .x, .entry:focus-within .x, .entry .x.armed { opacity: 1; }
+.entry .x.armed { color: var(--danger); }
+@media (hover: none) { .entry .x { opacity: 1; } }
+.entry.editing { background: var(--soft); border-radius: 8px; }
+.entry .d { cursor: pointer; }
+.empty { text-align: center; padding: 36px 12px; color: var(--muted); display: grid; gap: 6px; }
+.empty b { color: var(--ink); font-weight: 600; }
+
+/* Family */
+.members { display: grid; gap: 2px; }
+.member { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--soft); }
+.member .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.member .s { font-family: var(--font-num); font-size: 13px; color: var(--muted); }
+.settings { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.notice { background: var(--soft); border-radius: var(--r); padding: 14px 16px; font-size: 14px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Family Expense Register<small id="sub">Everyday spending, kept together</small></div>
+    <div class="monthnav">
+      <button class="iconbtn" id="prev" aria-label="Previous month">‹</button>
+      <div class="m" id="monthLabel">—</div>
+      <button class="iconbtn" id="next" aria-label="Next month">›</button>
+    </div>
+  </header>
+
+  <div id="offline" class="notice" hidden>Sign in to claude.ai to open your family register. Entries are saved to your account and shared with the family members you invite.</div>
+
+  <section class="summary" aria-label="Month summary">
+    <div class="label" id="totalLabel">Spent this month</div>
+    <div class="total" id="total">—</div>
+    <div class="stats">
+      <div><span class="label">Today</span><span class="v" id="sToday">—</span></div>
+      <div><span class="label">Daily average</span><span class="v" id="sAvg">—</span></div>
+      <div><span class="label">Entries</span><span class="v" id="sCount">—</span></div>
+    </div>
+  </section>
+
+  <form class="card" id="form" autocomplete="off" aria-label="Add an expense">
+    <div class="amountrow">
+      <span class="cur" id="curSym">₹</span>
+      <input id="amount" inputmode="decimal" placeholder="0" aria-label="Amount" required>
+    </div>
+    <div class="row">
+      <input class="field" id="note" placeholder="What was it for?" maxlength="80" aria-label="Description">
+      <input class="field" id="date" type="date" aria-label="Date">
+    </div>
+    <div class="group">
+      <span class="label">Category</span>
+      <div class="chips" id="cats"></div>
+    </div>
+    <div class="group">
+      <span class="label">Paid by</span>
+      <div class="chips" id="payers"></div>
+      <p class="hint" id="payerHint" hidden>Add yourself and your family below to choose who paid.</p>
+    </div>
+    <p class="err" id="formErr" hidden></p>
+    <div class="actions">
+      <button type="button" class="ghost" id="cancelEdit" hidden>Cancel</button>
+      <button type="submit" class="btn" id="save">Add expense</button>
+    </div>
+  </form>
+
+  <section class="split" id="breakdown" aria-label="Breakdown">
+    <div class="group">
+      <h2>By category</h2>
+      <div class="bars" id="catBars"></div>
+    </div>
+    <div class="group">
+      <h2>By person</h2>
+      <div class="stack" id="memberStack"></div>
+      <div class="bars" id="memberBars"></div>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="ledhead">
+      <h2>Entries</h2>
+      <div class="chips" id="filter"></div>
+    </div>
+    <div class="ledger" id="ledger">
+      <div class="empty"><b>Loading your register…</b></div>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Family">
+    <h2>Family</h2>
+    <div class="members" id="members"></div>
+    <form class="row" id="memberForm" autocomplete="off">
+      <input class="field" id="memberName" placeholder="Add a name, e.g. Priya" maxlength="30" aria-label="Family member name">
+      <button class="btn" type="submit">Add</button>
+    </form>
+    <p class="hint">To let family add their own entries, use Share on this page and give them Contributor access. Everyone sees the same register.</p>
+    <div class="settings">
+      <label class="label" for="currency">Currency</label>
+      <select class="field" id="currency" style="width:auto">
+        <option value="INR">₹ INR</option>
+        <option value="USD">$ USD</option>
+        <option value="EUR">€ EUR</option>
+        <option value="GBP">£ GBP</option>
+        <option value="AED">AED</option>
+        <option value="CAD">CA$ CAD</option>
+        <option value="AUD">A$ AUD</option>
+        <option value="SGD">S$ SGD</option>
+        <option value="JPY">¥ JPY</option>
+      </select>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const CATS = ["Groceries", "Food & dining", "Transport", "Bills & utilities", "Rent & home", "Shopping", "Health", "Kids & school", "Entertainment", "Travel", "Gifts", "Other"];
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  const pad = (n) => String(n).padStart(2, "0");
+  const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const todayIso = () => iso(new Date());
+  const now = new Date();
+
+  const state = {
+    db: null, canWrite: true, uid: null,
+    year: now.getFullYear(), month: now.getMonth(),
+    expenses: [], members: [], currency: "INR",
+    cat: "Groceries", payer: null, filter: "all", editingId: null,
+    loaded: false, unsubMonth: null,
+  };
+
+  const lastPayerKey = "fer.lastPayer";
+  try { state.payer = localStorage.getItem(lastPayerKey); } catch (e) {}
+
+  // ---------- money ----------
+  let fmtCache = {};
+  function fmt(n, compact) {
+    const key = state.currency + (compact ? "c" : "");
+    if (!fmtCache[key]) {
+      const digits = state.currency === "JPY" ? 0 : 2;
+      fmtCache[key] = new Intl.NumberFormat(undefined, { style: "currency", currency: state.currency, minimumFractionDigits: compact ? 0 : digits, maximumFractionDigits: compact ? 0 : digits });
+    }
+    return fmtCache[key].format(n || 0);
+  }
+  function curSymbol() {
+    try {
+      const p = new Intl.NumberFormat(undefined, { style: "currency", currency: state.currency }).formatToParts(0);
+      return (p.find((x) => x.type === "currency") || {}).value || state.currency;
+    } catch (e) { return state.currency; }
+  }
+
+  // ---------- members ----------
+  const activeMembers = () => state.members.filter((m) => !m.archived).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const memberById = (id) => state.members.find((m) => m.id === id);
+  const colorFor = (m) => `var(--m${((m && m.color) || 0) % 8 + 1})`;
+  const initials = (name) => (name || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+
+  // ---------- render ----------
+  function monthRange() {
+    const start = `${state.year}-${pad(state.month + 1)}-01`;
+    const last = new Date(state.year, state.month + 1, 0).getDate();
+    return { start, end: `${state.year}-${pad(state.month + 1)}-${pad(last)}`, days: last };
+  }
+  function isCurrentMonth() { const d = new Date(); return d.getFullYear() === state.year && d.getMonth() === state.month; }
+
+  function renderHeader() {
+    const d = new Date(state.year, state.month, 1);
+    $("monthLabel").textContent = d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    $("next").disabled = isCurrentMonth();
+    $("totalLabel").textContent = isCurrentMonth() ? "Spent this month" : "Spent in " + d.toLocaleDateString(undefined, { month: "long" });
+    $("curSym").textContent = curSymbol();
+    $("currency").value = state.currency;
+  }
+
+  function visibleExpenses() {
+    return state.filter === "all" ? state.expenses : state.expenses.filter((e) => e.by === state.filter);
+  }
+
+  function renderSummary() {
+    const list = visibleExpenses();
+    const total = list.reduce((s, e) => s + (e.amount || 0), 0);
+    const { days } = monthRange();
+    const elapsed = isCurrentMonth() ? new Date().getDate() : days;
+    const today = list.filter((e) => e.date === todayIso()).reduce((s, e) => s + e.amount, 0);
+    $("total").textContent = state.loaded ? fmt(total) : "—";
+    $("sToday").textContent = state.loaded ? (isCurrentMonth() ? fmt(today) : "—") : "—";
+    $("sAvg").textContent = state.loaded ? fmt(total / Math.max(1, elapsed)) : "—";
+    $("sCount").textContent = state.loaded ? String(list.length) : "—";
+  }
+
+  function renderChips() {
+    const cats = $("cats"); cats.replaceChildren();
+    CATS.forEach((c) => {
+      const b = el("button", "chip", c); b.type = "button";
+      b.setAttribute("aria-pressed", String(state.cat === c));
+      b.onclick = () => { state.cat = c; renderChips(); };
+      cats.append(b);
+    });
+
+    const payers = $("payers"); payers.replaceChildren();
+    const ms = activeMembers();
+    if (ms.length && !ms.some((m) => m.id === state.payer)) state.payer = ms[0].id;
+    ms.forEach((m) => {
+      const b = el("button", "chip"); b.type = "button";
+      const dot = el("span", "dot"); dot.style.background = colorFor(m);
+      b.append(dot, document.createTextNode(m.name));
+      b.setAttribute("aria-pressed", String(state.payer === m.id));
+      b.onclick = () => { state.payer = m.id; try { localStorage.setItem(lastPayerKey, m.id); } catch (e) {} renderChips(); };
+      payers.append(b);
+    });
+    $("payerHint").hidden = ms.length > 0;
+
+    const filter = $("filter"); filter.replaceChildren();
+    if (ms.length > 1) {
+      const opts = [{ id: "all", name: "Everyone" }, ...ms];
+      opts.forEach((m) => {
+        const b = el("button", "chip", m.name); b.type = "button";
+        b.setAttribute("aria-pressed", String(state.filter === m.id));
+        b.onclick = () => { state.filter = m.id; renderAll(); };
+        filter.append(b);
+      });
+    } else state.filter = "all";
+  }
+
+  function bar(label, value, max, color) {
+    const w = el("div", "bar");
+    const t = el("div", "t"); t.append(el("span", null, label), el("span", "num", fmt(value, true)));
+    const tr = el("div", "track"); const f = el("div", "fill");
+    f.style.width = (max ? (value / max) * 100 : 0) + "%"; if (color) f.style.background = color;
+    tr.append(f); w.append(t, tr); return w;
+  }
+
+  function renderBreakdown() {
+    const list = visibleExpenses();
+    const catBars = $("catBars"); catBars.replaceChildren();
+    const byCat = {};
+    list.forEach((e) => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+    const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+    const max = cats.length ? cats[0][1] : 0;
+    if (!cats.length) catBars.append(el("p", "hint", state.loaded ? "Nothing spent yet this month." : "…"));
+    cats.slice(0, 6).forEach(([c, v]) => catBars.append(bar(c, v, max)));
+    if (cats.length > 6) {
+      const rest = cats.slice(6).reduce((s, x) => s + x[1], 0);
+      catBars.append(bar(`${cats.length - 6} more`, rest, max, "var(--muted)"));
+    }
+
+    const all = state.expenses;
+    const byM = {};
+    all.forEach((e) => { byM[e.by || "_"] = (byM[e.by || "_"] || 0) + e.amount; });
+    const total = all.reduce((s, e) => s + e.amount, 0);
+    const rows = Object.entries(byM).sort((a, b) => b[1] - a[1]);
+    const stack = $("memberStack"); stack.replaceChildren();
+    const mb = $("memberBars"); mb.replaceChildren();
+    if (!rows.length) { mb.append(el("p", "hint", state.loaded ? "Each person's share shows here." : "…")); }
+    rows.forEach(([id, v]) => {
+      const m = memberById(id);
+      const seg = el("div"); seg.style.flex = String(v); seg.style.background = colorFor(m);
+      seg.title = (m ? m.name : "Unassigned") + " " + fmt(v);
+      stack.append(seg);
+      const row = el("div", "bar");
+      const t = el("div", "t");
+      const n = el("span"); n.style.display = "inline-flex"; n.style.alignItems = "center"; n.style.gap = "7px";
+      const dot = el("span", "dot"); dot.style.background = colorFor(m);
+      n.append(dot, document.createTextNode(m ? m.name + (m.archived ? " (removed)" : "") : "Unassigned"));
+      t.append(n, el("span", "num", `${fmt(v, true)} · ${total ? Math.round((v / total) * 100) : 0}%`));
+      row.append(t); mb.append(row);
+    });
+    stack.hidden = !rows.length;
+  }
+
+  function renderLedger() {
+    const box = $("ledger"); box.replaceChildren();
+    if (!state.loaded) { box.append(emptyBox("Loading your register…")); return; }
+    const list = visibleExpenses();
+    if (!list.length) {
+      box.append(emptyBox(
+        isCurrentMonth() ? "No expenses yet this month" : "No expenses this month",
+        isCurrentMonth() ? "Type an amount above and press Add expense. Your entries show here, grouped by day." : "Use the arrows at the top to move between months."
+      ));
+      return;
+    }
+    const days = {};
+    list.forEach((e) => { (days[e.date] = days[e.date] || []).push(e); });
+    Object.keys(days).sort().reverse().forEach((date) => {
+      const items = days[date].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const day = el("div", "day");
+      const h = el("div", "dayhead");
+      const dd = new Date(date + "T00:00:00");
+      const label = date === todayIso() ? "Today" : date === iso(new Date(Date.now() - 864e5)) ? "Yesterday" : dd.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+      h.append(el("span", null, label), el("span", "num", fmt(items.reduce((s, e) => s + e.amount, 0))));
+      day.append(h);
+      items.forEach((e) => day.append(entryRow(e)));
+      box.append(day);
+    });
+  }
+
+  function emptyBox(title, body) {
+    const d = el("div", "empty"); d.append(el("b", null, title)); if (body) d.append(el("span", null, body)); return d;
+  }
+
+  function entryRow(e) {
+    const m = memberById(e.by);
+    const r = el("div", "entry" + (state.editingId === e.id ? " editing" : ""));
+    const who = el("div", "who", m ? initials(m.name) : "?"); who.style.background = colorFor(m);
+    who.title = m ? m.name : "Unassigned";
+    const d = el("div", "d"); d.tabIndex = 0; d.setAttribute("role", "button"); d.setAttribute("aria-label", "Edit " + (e.note || e.category));
+    d.append(el("b", null, e.note || e.category), el("span", null, e.note ? `${e.category} · ${m ? m.name : "Unassigned"}` : (m ? m.name : "Unassigned")));
+    d.onclick = () => startEdit(e);
+    d.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); startEdit(e); } };
+    const right = el("div", "r");
+    right.append(el("span", "amt", fmt(e.amount)));
+    if (state.canWrite) {
+      const x = el("button", "ghost x", "Delete"); x.type = "button";
+      let timer;
+      x.onclick = async () => {
+        if (!x.classList.contains("armed")) {
+          x.classList.add("armed"); x.textContent = "Confirm";
+          timer = setTimeout(() => { x.classList.remove("armed"); x.textContent = "Delete"; }, 3000);
+          return;
+        }
+        clearTimeout(timer);
+        try { await state.db.doc("expenses/" + e.id).delete(); toast("Deleted"); if (state.editingId === e.id) resetForm(); }
+        catch (err) { toast(errText(err)); }
+      };
+      right.append(x);
+    }
+    r.append(who, d, right);
+    return r;
+  }
+
+  function renderMembers() {
+    const box = $("members"); box.replaceChildren();
+    const ms = activeMembers();
+    if (!ms.length) { box.append(el("p", "hint", state.loaded ? "Start with your own name, then add your spouse, children or anyone else who spends from the family budget." : "…")); }
+    const spent = {};
+    state.expenses.forEach((e) => { spent[e.by] = (spent[e.by] || 0) + e.amount; });
+    ms.forEach((m) => {
+      const row = el("div", "member");
+      const dot = el("span", "dot"); dot.style.background = colorFor(m);
+      row.append(dot, el("span", "n", m.name), el("span", "s", fmt(spent[m.id] || 0, true)));
+      if (state.canWrite) {
+        const x = el("button", "ghost", "Remove"); x.type = "button";
+        let timer;
+        x.onclick = async () => {
+          if (x.dataset.armed !== "1") {
+            x.dataset.armed = "1"; x.textContent = "Remove " + m.name + "?"; x.style.color = "var(--danger)";
+            timer = setTimeout(() => { x.dataset.armed = ""; x.textContent = "Remove"; x.style.color = ""; }, 3000);
+            return;
+          }
+          clearTimeout(timer);
+          try { await state.db.doc("members/" + m.id).update({ archived: true }); toast(m.name + " removed. Past entries keep their name."); }
+          catch (err) { toast(errText(err)); }
+        };
+        row.append(x);
+      }
+      box.append(row);
+    });
+  }
+
+  function renderAll() {
+    renderHeader(); renderChips(); renderSummary(); renderBreakdown(); renderLedger(); renderMembers();
+    const ro = !state.canWrite;
+    ["amount", "note", "date", "save", "memberName", "currency"].forEach((id) => { $(id).disabled = ro || !state.db; });
+    document.querySelector("#memberForm .btn").disabled = ro || !state.db;
+  }
+
+  // ---------- form ----------
+  function parseAmount(s) {
+    const n = Number(String(s).replace(/[^\d.,-]/g, "").replace(/,/g, ""));
+    return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+  }
+  function resetForm() {
+    state.editingId = null;
+    $("amount").value = ""; $("note").value = ""; $("date").value = todayIso();
+    $("save").textContent = "Add expense"; $("cancelEdit").hidden = true; $("formErr").hidden = true;
+    renderLedger();
+  }
+  function startEdit(e) {
+    if (!state.canWrite) return;
+    state.editingId = e.id;
+    $("amount").value = String(e.amount); $("note").value = e.note || ""; $("date").value = e.date;
+    state.cat = CATS.includes(e.category) ? e.category : "Other";
+    if (e.by && memberById(e.by)) state.payer = e.by;
+    $("save").textContent = "Save changes"; $("cancelEdit").hidden = false;
+    renderChips(); renderLedger();
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("amount").focus({ preventScroll: true });
+  }
+  $("cancelEdit").onclick = resetForm;
+
+  $("form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!state.db) return;
+    const amount = parseAmount($("amount").value);
+    const err = $("formErr");
+    if (!(amount > 0)) { err.textContent = "Enter an amount greater than zero."; err.hidden = false; $("amount").focus(); return; }
+    const date = $("date").value || todayIso();
+    err.hidden = true;
+    const body = {
+      amount, date, category: state.cat, note: $("note").value.trim().slice(0, 80),
+      by: state.payer || null,
+    };
+    $("save").disabled = true;
+    try {
+      if (state.editingId) {
+        await state.db.doc("expenses/" + state.editingId).update(body);
+        toast("Saved");
+      } else {
+        await state.db.collection("expenses").add({ ...body, createdAt: Date.now(), createdBy: state.uid || null });
+        toast("Added " + fmt(amount));
+        // jump to the entry's month if it was logged elsewhere
+        const [y, m] = date.split("-").map(Number);
+        if (y !== state.year || m - 1 !== state.month) { state.year = y; state.month = m - 1; subscribeMonth(); }
+      }
+      resetForm();
+    } catch (e) {
+      err.textContent = errText(e); err.hidden = false;
+    } finally { $("save").disabled = !state.canWrite; }
+  });
+
+  $("memberForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const name = $("memberName").value.trim().slice(0, 30);
+    if (!name || !state.db) return;
+    const existing = state.members.find((m) => m.name.toLowerCase() === name.toLowerCase());
+    try {
+      if (existing && existing.archived) await state.db.doc("members/" + existing.id).update({ archived: false });
+      else if (existing) { toast(name + " is already in the family"); return; }
+      else {
+        const used = state.members.length;
+        await state.db.collection("members").add({ name, color: used % 8, order: Date.now(), archived: false });
+      }
+      $("memberName").value = ""; toast(name + " added");
+    } catch (e) { toast(errText(e)); }
+  });
+
+  $("currency").addEventListener("change", async () => {
+    const c = $("currency").value;
+    state.currency = c; fmtCache = {}; renderAll();
+    try { await state.db.doc("settings/main").set({ currency: c }); } catch (e) { toast(errText(e)); }
+  });
+
+  $("prev").onclick = () => { state.month--; if (state.month < 0) { state.month = 11; state.year--; } subscribeMonth(); };
+  $("next").onclick = () => { if (isCurrentMonth()) return; state.month++; if (state.month > 11) { state.month = 0; state.year++; } subscribeMonth(); };
+
+  function errText(e) {
+    const code = e && e.code;
+    if (code === "invalid_argument") { state.canWrite = false; renderAll(); return "You can view this register but not change it. Ask the owner for Contributor access."; }
+    if (code === "quota_exceeded") return "The register is full. Delete some old entries to add new ones.";
+    if (code === "resource_exhausted") return "Too many changes at once. Wait a moment and try again.";
+    return "Couldn't save. Check your connection and try again.";
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2400);
+  }
+
+  // ---------- data ----------
+  function subscribeMonth() {
+    if (state.unsubMonth) state.unsubMonth();
+    state.loaded = false; state.expenses = []; renderAll();
+    if (!state.db) return;
+    const { start, end } = monthRange();
+    state.unsubMonth = state.db.collection("expenses")
+      .where("date", ">=", start).where("date", "<=", end)
+      .orderBy("date", "desc").limit(1000)
+      .onSnapshot((snap) => {
+        state.expenses = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => typeof e.amount === "number");
+        state.loaded = true;
+        renderSummary(); renderBreakdown(); renderLedger(); renderMembers();
+      }, () => { state.loaded = true; renderAll(); });
+  }
+
+  $("date").value = todayIso();
+  renderAll();
+
+  (async () => {
+    const [db, user] = await Promise.all([
+      window.claude ? claude.use("db") : null,
+      window.claude ? claude.use("user") : null,
+    ]);
+    if (!db) {
+      $("offline").hidden = false; state.loaded = true;
+      $("ledger").replaceChildren(emptyBox("Register unavailable here", "Open this page while signed in to claude.ai to add and see entries."));
+      renderSummary(); ["amount", "note", "date", "save"].forEach((id) => { $(id).disabled = true; });
+      return;
+    }
+    state.db = db;
+    if (user) {
+      try { state.uid = await user.id(); } catch (e) {}
+      try { const w = await user.can("data.write"); if (w === false) state.canWrite = false; } catch (e) {}
+    }
+    db.collection("members").onSnapshot((snap) => {
+      state.members = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => typeof m.name === "string");
+      renderChips(); renderBreakdown(); renderLedger(); renderMembers();
+    });
+    db.doc("settings/main").onSnapshot((snap) => {
+      const c = snap.exists && snap.data().currency;
+      if (c && c !== state.currency) { state.currency = c; fmtCache = {}; renderAll(); }
+    });
+    subscribeMonth();
+  })();
+})();
+</script>
