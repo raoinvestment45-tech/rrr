@@ -1,0 +1,53 @@
+# Builds the CleanYourTV launcher APK (github.com/Gathin23/cleanyourtv) and uploads it as an artifact.
+name: Build CleanYourTV launcher
+
+on:
+  push:
+    branches: [claude/build-cleanyourtv-apk]
+    paths: [.github/workflows/build-cleanyourtv.yml]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit, branch or tag of Gathin23/cleanyourtv to build
+        default: f9f0c5353e65c5003d5f2f45784a30c5dee19ecb
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Gathin23/cleanyourtv
+          ref: ${{ inputs.ref || 'f9f0c5353e65c5003d5f2f45784a30c5dee19ecb' }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-34 build-tools;34.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests and release build
+        working-directory: launcher
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testReleaseUnitTest assembleRelease
+      - name: APK size and checksum
+        run: |
+          apk=launcher/app/build/outputs/apk/release/app-release.apk
+          echo "release APK: $(( $(stat -c %s "$apk") / 1024 )) KB"
+          sha256sum "$apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cleanyourtv-launcher-apk
+          path: launcher/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-report
+          path: launcher/app/build/reports/tests/
+          if-no-files-found: ignore
