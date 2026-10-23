@@ -346,12 +346,14 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 
 <script>
 (() => {
-  const CATS = ["Groceries", "Food & dining", "Transport", "Bills & utilities", "Rent & home", "Shopping", "Health", "Kids & school", "Entertainment", "Travel", "Gifts", "Other"];
+  const CATS = ["Groceries", "Food & dining", "Transport", "Petrol", "Bills & utilities", "Home", "Shopping", "Health", "Kids", "Entertainment", "Travel", "Gifts", "Other"];
+  // entries saved under earlier category names show under the new ones
+  const RENAMED = { "Rent & home": "Home", "Kids & school": "Kids" };
   const SOURCES = ["Salary", "Business", "Freelance", "Rental", "Interest & dividends", "Pension", "Gifts received", "Refunds", "Other income"];
   const TRANSFER_TYPES = ["Loan", "Repayment", "Gift / allowance"];
   const ICON = {
-    "Groceries": "🛒", "Food & dining": "🍜", "Transport": "🚌", "Bills & utilities": "💡", "Rent & home": "🏠", "Shopping": "🛍️",
-    "Health": "💊", "Kids & school": "🎒", "Entertainment": "🎬", "Travel": "✈️", "Gifts": "🎁", "Other": "✨",
+    "Groceries": "🛒", "Food & dining": "🍜", "Transport": "🚌", "Petrol": "⛽", "Bills & utilities": "💡", "Home": "🏠", "Shopping": "🛍️",
+    "Health": "💊", "Kids": "🧸", "Entertainment": "🎬", "Travel": "✈️", "Gifts": "🎁", "Other": "✨",
     "Salary": "💼", "Business": "🏪", "Freelance": "💻", "Rental": "🔑", "Interest & dividends": "📈", "Pension": "🌿",
     "Gifts received": "🎉", "Refunds": "↩️", "Other income": "💰",
     "Loan": "🤝", "Repayment": "🔁", "Gift / allowance": "💝",
@@ -963,7 +965,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       .where("date", ">=", start).where("date", "<=", end)
       .orderBy("date", "desc").limit(1000)
       .onSnapshot((snap) => {
-        state.expenses = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => typeof e.amount === "number");
+        state.expenses = snap.docs.map((d) => { const e = { id: d.id, ...d.data() }; if (RENAMED[e.category]) e.category = RENAMED[e.category]; return e; }).filter((e) => typeof e.amount === "number");
         state.loaded = true;
         state.prior[start.slice(0, 7)] = state.expenses;
         renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
