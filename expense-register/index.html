@@ -126,6 +126,21 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .stats .v.pos { color: var(--accent); }
 .stats .v.neg { color: var(--danger); }
+.tablewrap { overflow-x: auto; }
+table.bal { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.bal th { text-align: right; font-weight: 500; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.bal td { text-align: right; padding: 8px; border-bottom: 1px solid var(--soft); font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bal th:first-child, .bal td:first-child { text-align: left; padding-left: 2px; font-family: var(--font-ui); }
+.bal tr.quiet td { color: var(--muted); }
+.bal td.in { color: var(--accent); }
+.bal td.close { font-weight: 600; }
+.bal td.neg { color: var(--danger); }
+.bal td.msg { text-align: left; font-family: var(--font-ui); color: var(--muted); padding: 18px 2px; white-space: normal; }
+.stats .v.neg { color: var(--danger); }
+.openform { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 0 12px; border-bottom: 1px solid var(--soft); }
+.openform .hint { flex-basis: 100%; }
+.openform .field { width: 150px; flex: 1 1 130px; }
+.member .s { white-space: nowrap; }
 .empty { text-align: center; padding: 36px 12px; color: var(--muted); display: grid; gap: 6px; }
 .empty b { color: var(--ink); font-weight: 600; }
 
@@ -163,6 +178,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
       <div><span class="label">Daily average</span><span class="v" id="sAvg">—</span></div>
       <div><span class="label">Entries</span><span class="v" id="sCount">—</span></div>
     </div>
+    <div class="chips" id="filter" aria-label="Show"></div>
   </section>
 
   <form class="card" id="form" autocomplete="off" aria-label="Add an entry">
@@ -194,6 +210,21 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     </div>
   </form>
 
+  <section class="group" aria-label="Daily balance">
+    <div class="ledhead">
+      <h2>Daily balance</h2>
+      <span class="hint" id="balWho"></span>
+    </div>
+    <div class="stats" id="balLine"></div>
+    <div class="tablewrap">
+      <table class="bal">
+        <thead><tr><th scope="col">Day</th><th scope="col">Opening</th><th scope="col">Received</th><th scope="col">Spent</th><th scope="col">Closing</th></tr></thead>
+        <tbody id="balBody"></tbody>
+      </table>
+    </div>
+    <p class="hint">Closing = opening + money received − money spent. Set each person's starting amount under Family.</p>
+  </section>
+
   <section class="split" id="breakdown" aria-label="Breakdown">
     <div class="group">
       <h2>By category</h2>
@@ -212,10 +243,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
   </section>
 
   <section class="group">
-    <div class="ledhead">
-      <h2>Entries</h2>
-      <div class="chips" id="filter"></div>
-    </div>
+    <h2>Entries</h2>
     <div class="ledger" id="ledger">
       <div class="empty"><b>Loading your register…</b></div>
     </div>
@@ -265,7 +293,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     year: now.getFullYear(), month: now.getMonth(),
     expenses: [], members: [], currency: "INR",
     kind: "expense", cat: "Groceries", src: "Salary", payer: null, filter: "all", editingId: null,
-    loaded: false, unsubMonth: null,
+    loaded: false, unsubMonth: null, prior: {}, editingMember: null,
   };
 
   const lastPayerKey = "fer.lastPayer";
@@ -499,14 +527,19 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     const box = $("members"); box.replaceChildren();
     const ms = activeMembers();
     if (!ms.length) { box.append(el("p", "hint", state.loaded ? "Start with your own name, then add your spouse, children or anyone else who spends from the family budget." : "…")); }
-    const spent = {}, earned = {};
-    state.expenses.forEach((e) => { const t = isIncome(e) ? earned : spent; t[e.by] = (t[e.by] || 0) + e.amount; });
     ms.forEach((m) => {
       const row = el("div", "member");
       const dot = el("span", "dot"); dot.style.background = colorFor(m);
-      const s = (earned[m.id] ? "+" + fmt(earned[m.id], true) + " · " : "") + fmt(spent[m.id] || 0, true) + " spent";
-      row.append(dot, el("span", "n", m.name), el("span", "s", s));
+      const o = opening(m);
+      const obText = `Opening ${fmtSigned(o.amount, true)} · from ${shortDate(o.date)}`;
+      row.append(dot, el("span", "n", m.name));
       if (state.canWrite) {
+        const ob = el("button", "ghost s", obText); ob.type = "button";
+        ob.setAttribute("aria-label", "Change opening balance for " + m.name);
+        ob.onclick = () => {
+          state.editingMember = state.editingMember === m.id ? null : m.id; renderMembers();
+          const a = document.getElementById("ob-amt-" + m.id); if (a) { a.focus(); a.select(); }
+        };
         const x = el("button", "ghost", "Remove"); x.type = "button";
         let timer;
         x.onclick = async () => {
@@ -519,14 +552,126 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
           try { await state.db.doc("members/" + m.id).update({ archived: true }); toast(m.name + " removed. Past entries keep their name."); }
           catch (err) { toast(errText(err)); }
         };
-        row.append(x);
-      }
+        row.append(ob, x);
+      } else row.append(el("span", "s", obText));
       box.append(row);
+
+      if (state.editingMember === m.id) {
+        const f = el("form", "openform"); f.autocomplete = "off";
+        const amt = el("input", "field num"); amt.id = "ob-amt-" + m.id; amt.inputMode = "decimal";
+        amt.value = String(o.amount); amt.setAttribute("aria-label", "Opening balance");
+        const dt = el("input", "field"); dt.id = "ob-date-" + m.id; dt.type = "date"; dt.value = o.date;
+        dt.setAttribute("aria-label", "Balance as of");
+        const save = el("button", "btn", "Save"); save.type = "submit";
+        const cancel = el("button", "ghost", "Cancel"); cancel.type = "button";
+        cancel.onclick = () => { state.editingMember = null; renderMembers(); };
+        const lab = el("p", "hint", `How much money ${m.name} had at the start of this date. Daily balances count from here.`);
+        f.append(lab, amt, dt, save, cancel);
+        f.onsubmit = async (ev) => {
+          ev.preventDefault();
+          const v = parseAmount(amt.value);
+          if (!Number.isFinite(v)) { toast("Enter the opening balance as a number"); return; }
+          try {
+            await state.db.doc("members/" + m.id).update({ openingBalance: v, openingDate: dt.value || o.date });
+            state.editingMember = null; toast("Opening balance saved");
+          } catch (err) { toast(errText(err)); }
+        };
+        box.append(f);
+      }
     });
   }
 
+  // ---------- daily balance ----------
+  const ymOf = (date) => date.slice(0, 7);
+  function firstOf(ts) { const d = new Date(ts || Date.now()); return iso(new Date(d.getFullYear(), d.getMonth(), 1)); }
+  function opening(m) {
+    return { date: m.openingDate || firstOf(m.order), amount: typeof m.openingBalance === "number" ? m.openingBalance : 0 };
+  }
+  function shortDate(d) { return new Date(d + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short", year: d.slice(0, 4) === String(new Date().getFullYear()) ? undefined : "numeric" }); }
+  function fmtSigned(n, compact) { return (n < 0 ? "−" : "") + fmt(Math.abs(n), compact); }
+  function monthsBetween(fromYm, toYm) { // fromYm inclusive, toYm exclusive
+    const out = []; let [y, m] = fromYm.split("-").map(Number);
+    while (`${y}-${pad(m)}` < toYm) { out.push(`${y}-${pad(m)}`); m++; if (m > 12) { m = 1; y++; } }
+    return out;
+  }
+  async function fetchMonth(ym) {
+    if (state.prior[ym]) return state.prior[ym];
+    const [y, mo] = ym.split("-").map(Number);
+    const snap = await state.db.collection("expenses")
+      .where("date", ">=", ym + "-01").where("date", "<=", `${ym}-${pad(new Date(y, mo, 0).getDate())}`).limit(1000).get();
+    return (state.prior[ym] = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => typeof e.amount === "number"));
+  }
+
+  let balToken = 0;
+  async function renderBalance() {
+    const token = ++balToken;
+    const body = $("balBody"), line = $("balLine");
+    const msg = (t) => { body.replaceChildren(); const tr = el("tr"); const td = el("td", "msg", t); td.colSpan = 5; tr.append(td); body.append(tr); line.replaceChildren(); };
+    const people = state.filter === "all" ? activeMembers() : [memberById(state.filter)].filter(Boolean);
+    $("balWho").textContent = state.filter === "all" ? (people.length > 1 ? "Whole family" : "") : (people[0] ? people[0].name : "");
+    if (!state.loaded || !state.db) { msg("Loading…"); return; }
+    if (!people.length) { msg("Add family members below to see each person's daily balance."); return; }
+
+    const { start, end } = monthRange();
+    const lastDay = isCurrentMonth() ? todayIso() : end;
+    const curYm = ymOf(start);
+    const starts = people.map(opening).map((o) => o.date).filter((d) => d < start).sort();
+    let prior = [];
+    if (starts.length) {
+      try {
+        for (const ym of monthsBetween(ymOf(starts[0]), curYm)) prior = prior.concat(await fetchMonth(ym));
+      } catch (e) { if (token === balToken) msg("Couldn't load earlier months. Reload to try again."); return; }
+      if (token !== balToken) return;
+    }
+    const net = (e) => (isIncome(e) ? e.amount : -e.amount);
+
+    const days = [];
+    for (let d = new Date(start + "T00:00:00"); iso(d) <= lastDay; d.setDate(d.getDate() + 1)) days.push(iso(d));
+    const rows = {};
+    days.forEach((d) => { rows[d] = { open: 0, in: 0, out: 0, close: 0, active: false, has: false }; });
+
+    people.forEach((p) => {
+      const o = opening(p);
+      if (o.date > lastDay) return;
+      let bal = o.amount;
+      if (o.date < start) prior.forEach((e) => { if (e.by === p.id && e.date >= o.date && e.date < start) bal += net(e); });
+      days.forEach((d) => {
+        if (d < o.date) return;
+        const todays = state.expenses.filter((e) => e.by === p.id && e.date === d);
+        const inc = sum(todays.filter(isIncome)), out = sum(todays.filter((e) => !isIncome(e)));
+        const r = rows[d];
+        r.open += bal; r.in += inc; r.out += out; bal += inc - out; r.close += bal;
+        r.active = true; r.has = r.has || todays.length > 0;
+      });
+    });
+
+    const active = days.filter((d) => rows[d].active);
+    if (!active.length) { msg("Balances start from each person's opening date, which is after this month."); return; }
+    body.replaceChildren();
+    const cell = (v, cls) => el("td", cls, v);
+    active.slice().reverse().forEach((d) => {
+      const r = rows[d];
+      const tr = el("tr", r.has ? "" : "quiet");
+      const label = d === todayIso() ? "Today" : new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+      tr.append(
+        cell(label),
+        cell(fmtSigned(r.open, true), r.open < 0 ? "neg" : ""),
+        cell(r.in ? "+" + fmt(r.in, true) : "–", r.in ? "in" : ""),
+        cell(r.out ? fmt(r.out, true) : "–"),
+        cell(fmtSigned(r.close, true), "close" + (r.close < 0 ? " neg" : "")),
+      );
+      body.append(tr);
+    });
+    const first = rows[active[0]], last = rows[active[active.length - 1]];
+    const stat = (k, v, neg) => { const d = el("div"); d.append(el("span", "label", k), el("span", "v" + (neg ? " neg" : ""), v)); return d; };
+    line.replaceChildren(
+      stat("Opening · " + shortDate(active[0]), fmtSigned(first.open), first.open < 0),
+      stat((isCurrentMonth() ? "Closing · today" : "Closing · " + shortDate(active[active.length - 1])), fmtSigned(last.close), last.close < 0),
+    );
+  }
+
   function renderAll() {
-    renderHeader(); renderChips(); renderSummary(); renderBreakdown(); renderLedger(); renderMembers();
+    renderHeader(); renderChips(); renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance();
     const ro = !state.canWrite;
     ["amount", "note", "date", "save", "memberName", "currency"].forEach((id) => { $(id).disabled = ro || !state.db; });
     document.querySelector("#memberForm .btn").disabled = ro || !state.db;
@@ -577,7 +722,10 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     $("save").disabled = true;
     try {
       if (state.editingId) {
+        const old = state.expenses.find((e) => e.id === state.editingId);
         await state.db.doc("expenses/" + state.editingId).update(body);
+        if (old) delete state.prior[old.date.slice(0, 7)];
+        delete state.prior[date.slice(0, 7)];
         toast("Saved");
       } else {
         await state.db.collection("expenses").add({ ...body, createdAt: Date.now(), createdBy: state.uid || null });
@@ -643,7 +791,8 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
       .onSnapshot((snap) => {
         state.expenses = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => typeof e.amount === "number");
         state.loaded = true;
-        renderSummary(); renderBreakdown(); renderLedger(); renderMembers();
+        state.prior[start.slice(0, 7)] = state.expenses;
+        renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance();
       }, () => { state.loaded = true; renderAll(); });
   }
 
@@ -668,7 +817,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: v
     }
     db.collection("members").onSnapshot((snap) => {
       state.members = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => typeof m.name === "string");
-      renderChips(); renderBreakdown(); renderLedger(); renderMembers();
+      renderChips(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance();
     });
     db.doc("settings/main").onSnapshot((snap) => {
       const c = snap.exists && snap.data().currency;
