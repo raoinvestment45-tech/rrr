@@ -212,9 +212,15 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--lime) 55%, var(--surface)); color: var(--on-lime); margin-inline: 6px; vertical-align: 1px; }
 .entry .d span .pill { margin-left: 0; }
 .rolenote { margin: 0; padding: 12px 16px; border-radius: 16px; background: color-mix(in srgb, var(--lime) 30%, var(--surface)); color: var(--ink); font-size: 14px; font-weight: 500; }
+.addchip { border-style: dashed; color: var(--muted); }
+.newcat { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.newcat .field { flex: 1 1 160px; }
+.newcat .iconin { flex: 0 0 64px; text-align: center; font-size: 18px; }
 .rolenote { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .logincard { max-width: 420px; width: 100%; justify-self: center; }
 .loginform { display: grid; gap: 8px; }
+.keep { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; margin-top: 4px; cursor: pointer; }
+.keep input { width: 20px; height: 20px; accent-color: var(--forest); }
 .loginform .btn { margin-top: 8px; width: 100%; padding: 14px; }
 [data-locked="1"] .wrap > :not(.top):not(#loginCard):not(#offline) { display: none !important; }
 [data-role="member"] #payerGroup, [data-role="member"] #familyCard, [data-role="member"] #personCard, [data-role="member"] #filter { display: none; }
@@ -260,6 +266,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       <input class="field" id="loginId" autocapitalize="none" autocomplete="username" spellcheck="false">
       <label class="label" for="loginPw">Password</label>
       <input class="field" id="loginPw" type="password" autocomplete="current-password">
+      <label class="keep" for="loginKeep"><input type="checkbox" id="loginKeep" checked> Keep me signed in on this device</label>
       <p class="err" id="loginErr" hidden></p>
       <button class="btn" type="submit" id="loginBtn">Log in</button>
     </form>
@@ -282,6 +289,13 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <div class="group">
       <span class="label" id="catLabel">Category</span>
       <div class="chips" id="cats"></div>
+      <div class="newcat" id="newCatForm" hidden>
+        <input class="field iconin" id="newCatIcon" maxlength="4" placeholder="🏷️" aria-label="Icon (an emoji, optional)">
+        <input class="field" id="newCatName" maxlength="30" aria-label="Category name">
+        <button type="button" class="btn" id="newCatAdd">Add</button>
+        <button type="button" class="ghost" id="newCatCancel">Cancel</button>
+      </div>
+      <div id="catTools" hidden><button type="button" class="ghost" id="removeCat"></button></div>
     </div>
     <div class="group" id="payerGroup">
       <span class="label" id="payerLabel">Paid by</span>
@@ -387,6 +401,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     "Gifts received": "🎉", "Refunds": "↩️", "Other income": "💰",
     "Loan": "🤝", "Repayment": "🔁", "Gift / allowance": "💝",
   };
+  // categories people add: shared ones from the admin (settings/categories), private ones per member (inbox/<uid>/prefs/categories)
+  const custom = { shared: { expense: [], income: [] }, mine: { expense: [], income: [] } };
+  const customList = (kind) => [...custom.shared[kind], ...custom.mine[kind]];
+  const allCats = (kind) => { const base = kind === "income" ? SOURCES : CATS; const out = base.slice();
+    customList(kind).forEach((c) => { if (!out.includes(c.name)) out.splice(out.length - 1, 0, c.name); }); return out; };
+  const iconFor = (c) => ICON[c] || ((customList("expense").concat(customList("income")).find((x) => x.name === c) || {}).icon) || "🏷️";
   const TONES = ["--bubble", "--tangerine", "--sky", "--sun", "--mint", "--grape", "--coral", "--lime"];
   const catTone = (c) => { const i = [...CATS, ...SOURCES, ...TRANSFER_TYPES].indexOf(c); return `var(${TONES[Math.max(0, i) % TONES.length]})`; };
   const isIncome = (e) => e.type === "income";
@@ -487,18 +507,32 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     $("note").placeholder = tr ? "Note, e.g. for school fees" : inc ? "Where did it come from?" : "What was it for?";
     if (!state.editingId) $("save").textContent = tr ? "Record transfer" : inc ? "Add income" : "Add expense";
     const cats = $("cats"); cats.replaceChildren();
-    const opts = tr ? TRANSFER_TYPES : inc ? SOURCES : CATS;
+    const opts = tr ? TRANSFER_TYPES.slice() : allCats(inc ? "income" : "expense");
     const cur = tr ? state.ttype : inc ? state.src : state.cat;
+    if (!opts.includes(cur)) opts.push(cur);
     $("form").dataset.kind = state.kind;
     opts.forEach((c) => {
       const b = el("button", "chip"); b.type = "button";
-      const ic = el("span", null, ICON[c] || "✨"); ic.setAttribute("aria-hidden", "true");
+      const ic = el("span", null, iconFor(c)); ic.setAttribute("aria-hidden", "true");
       b.append(ic, document.createTextNode(c));
       b.style.setProperty("--c", catTone(c));
       b.setAttribute("aria-pressed", String(cur === c));
       b.onclick = () => { if (tr) state.ttype = c; else if (inc) state.src = c; else state.cat = c; renderChips(); };
       cats.append(b);
     });
+    // add / remove your own categories
+    const canAdd = !tr && state.canWrite && !!state.db && state.role !== "none";
+    const kindKey = inc ? "income" : "expense";
+    if (canAdd) {
+      const add = el("button", "chip addchip", inc ? "+ New source" : "+ New category"); add.type = "button";
+      add.onclick = () => { state.addingCat = !state.addingCat; renderChips(); if (state.addingCat) $("newCatName").focus(); };
+      cats.append(add);
+    }
+    $("newCatForm").hidden = !(canAdd && state.addingCat);
+    $("newCatName").placeholder = inc ? "New source, e.g. Tuition" : "New category, e.g. Milk";
+    const own = (state.role === "owner" ? custom.shared : custom.mine)[kindKey].some((x) => x.name === cur);
+    $("catTools").hidden = !(canAdd && own);
+    $("removeCat").textContent = `Remove “${cur}” from my list`;
 
     const payers = $("payers"); payers.replaceChildren();
     const ms = activeMembers();
@@ -559,7 +593,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
     const max = cats.length ? cats[0][1] : 0;
     if (!cats.length) catBars.append(el("p", "hint", state.loaded ? "Nothing spent yet this month." : "…"));
-    cats.slice(0, 6).forEach(([c, v]) => catBars.append(bar(`${ICON[c] || "✨"} ${c}`, v, max)));
+    cats.slice(0, 6).forEach(([c, v]) => catBars.append(bar(`${iconFor(c)} ${c}`, v, max)));
     if (cats.length > 6) {
       const rest = cats.slice(6).reduce((s, x) => s + x[1], 0);
       catBars.append(bar(`${cats.length - 6} more`, rest, max));
@@ -570,7 +604,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     visibleIncome().forEach((e) => { bySrc[e.category] = (bySrc[e.category] || 0) + e.amount; });
     const srcs = Object.entries(bySrc).sort((a, b) => b[1] - a[1]);
     if (!srcs.length) srcBars.append(el("p", "hint", state.loaded ? "No income recorded this month. Switch the form to Income to add some." : "…"));
-    srcs.forEach(([c, v]) => srcBars.append(bar(`${ICON[c] || "💰"} ${c}`, v, srcs[0][1])));
+    srcs.forEach(([c, v]) => srcBars.append(bar(`${iconFor(c)} ${c}`, v, srcs[0][1])));
 
     const all = state.expenses.filter(isExpense);
     const byM = {};
@@ -637,7 +671,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const nm = (x) => (x ? x.name : "Unassigned");
     const r = el("div", "entry" + (state.editingId === e.id ? " editing" : ""));
     const who = el("div", "who"); who.style.setProperty("--c", catTone(e.category));
-    const emo = el("span", null, ICON[e.category] || "✨"); emo.setAttribute("aria-hidden", "true");
+    const emo = el("span", null, ICON[e.category] || e.icon || iconFor(e.category)); emo.setAttribute("aria-hidden", "true");
     const mini = el("span", "mini", m ? initials(m.name) : "?"); mini.style.background = colorFor(m);
     who.append(emo, mini);
     who.title = m ? m.name : "Unassigned";
@@ -948,8 +982,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     $("amount").value = String(e.amount); $("note").value = e.note || ""; $("date").value = e.date;
     state.kind = isIncome(e) ? "income" : isTransfer(e) ? "transfer" : "expense";
     if (isTransfer(e)) { state.ttype = TRANSFER_TYPES.includes(e.category) ? e.category : "Gift / allowance"; state.to = e.to; }
-    else if (isIncome(e)) state.src = SOURCES.includes(e.category) ? e.category : "Other income";
-    else state.cat = CATS.includes(e.category) ? e.category : "Other";
+    else if (isIncome(e)) state.src = e.category || "Other income";
+    else state.cat = e.category || "Other";
     if (e.by && memberById(e.by)) state.payer = e.by;
     if (isTransfer(e)) state.to = e.to;
     $("save").textContent = "Save changes"; $("cancelEdit").hidden = false;
@@ -958,6 +992,43 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     $("amount").focus({ preventScroll: true });
   }
   $("cancelEdit").onclick = resetForm;
+
+  function catDocRef() { return state.role === "owner" ? state.db.doc("settings/categories") : state.db.doc(`inbox/${state.uid}/prefs/categories`); }
+  async function saveCats(next) {
+    const target = state.role === "owner" ? "shared" : "mine";
+    const prev = custom[target];
+    custom[target] = next; renderChips();
+    try { await catDocRef().set(next); }
+    catch (e) { custom[target] = prev; renderChips(); toast(errText(e)); }
+  }
+  $("newCatAdd").onclick = async () => {
+    const kind = state.kind === "income" ? "income" : "expense";
+    const name = $("newCatName").value.trim().replace(/\s+/g, " ").slice(0, 30);
+    const icon = [...$("newCatIcon").value.trim()].slice(0, 2).join("") || "🏷️";
+    if (!name) { $("newCatName").focus(); return; }
+    if (allCats(kind).some((c) => c.toLowerCase() === name.toLowerCase())) { toast(`“${name}” is already in the list`); return; }
+    const target = state.role === "owner" ? custom.shared : custom.mine;
+    const next = { expense: target.expense.slice(), income: target.income.slice() };
+    next[kind].push({ name, icon });
+    if (kind === "income") state.src = name; else state.cat = name;
+    state.addingCat = false; $("newCatName").value = ""; $("newCatIcon").value = "";
+    await saveCats(next);
+    toast(state.role === "owner" ? `Added “${name}” for the whole family` : `Added “${name}” to your list`);
+  };
+  $("newCatName").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); $("newCatAdd").click(); } });
+  $("newCatCancel").onclick = () => { state.addingCat = false; renderChips(); };
+  $("removeCat").onclick = async () => {
+    const kind = state.kind === "income" ? "income" : "expense";
+    const cur = kind === "income" ? state.src : state.cat;
+    const target = state.role === "owner" ? custom.shared : custom.mine;
+    const next = { expense: target.expense.slice(), income: target.income.slice() };
+    next[kind] = next[kind].filter((c) => c.name !== cur);
+    if (kind === "income") state.src = "Salary"; else state.cat = "Groceries";
+    await saveCats(next);
+    toast(`Removed “${cur}”. Past entries keep it.`);
+  };
+  const readCats = (s) => { const d = (s && s.exists && s.data()) || {}; const ok = (a) => (Array.isArray(a) ? a : []).filter((c) => c && typeof c.name === "string").map((c) => ({ name: c.name.slice(0, 30), icon: String(c.icon || "🏷️").slice(0, 8) }));
+    return { expense: ok(d.expense), income: ok(d.income) }; };
 
   $("form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
@@ -975,6 +1046,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       type: state.kind, amount, date, category: tr ? state.ttype : inc ? state.src : state.cat, note: $("note").value.trim().slice(0, 80),
       by: state.payer || null, to: tr ? state.to : null,
     };
+    // custom categories carry their icon so everyone sees it, not just the person who made the category
+    if (!tr && !ICON[body.category]) body.icon = iconFor(body.category);
     $("save").disabled = true;
     try {
       if (state.role === "member") {
@@ -1070,7 +1143,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       }, () => { state.loaded = true; renderAll(); });
   }
   function toEntry(d) { const e = { id: d.id, ...d.data() }; if (RENAMED[e.category]) e.category = RENAMED[e.category]; return e; }
-  const entryFields = (e) => ({ type: e.type || "expense", amount: e.amount, date: e.date, category: e.category, note: e.note || "", by: e.by || null, to: e.to || null, createdAt: e.createdAt || Date.now() });
+  const entryFields = (e) => ({ type: e.type || "expense", amount: e.amount, date: e.date, category: String(e.category || "Other").slice(0, 30), note: String(e.note || "").slice(0, 80), icon: e.icon ? String(e.icon).slice(0, 8) : null, by: e.by || null, to: e.to || null, createdAt: e.createdAt || Date.now() });
 
   // ----- admin: keep each linked person's own copy in step with the register -----
   const uidOf = (memberId) => { const m = memberById(memberId); return m && m.uid ? m.uid : null; };
@@ -1178,8 +1251,17 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   }
   const loginKey = (id) => sha("id:" + normId(id));
   const sessionKey = "fer.session";
-  function readSession() { try { return localStorage.getItem(sessionKey) || ""; } catch (e) { return state.sessionMem || ""; } }
-  function writeSession(v) { state.sessionMem = v; try { if (v) localStorage.setItem(sessionKey, v); else localStorage.removeItem(sessionKey); } catch (e) {} }
+  // "Keep me signed in" remembers the login on this device; otherwise it lasts until the tab closes
+  function readSession() {
+    try { const v = localStorage.getItem(sessionKey) || sessionStorage.getItem(sessionKey); if (v) return v; } catch (e) {}
+    return state.sessionMem || "";
+  }
+  function writeSession(v, remember) {
+    state.sessionMem = v;
+    try { localStorage.removeItem(sessionKey); sessionStorage.removeItem(sessionKey); } catch (e) {}
+    if (!v) return;
+    try { (remember ? localStorage : sessionStorage).setItem(sessionKey, v); } catch (e) {}
+  }
 
   function loggedIn() {
     const s = readSession();
@@ -1216,7 +1298,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const dk = L ? await derive(pw, L.salt, L.iterations || ITER) : null;
       if (!L || (await sha("v:" + dk)) !== L.verifier) { err.textContent = "That ID or password is wrong."; err.hidden = false; return; }
       if (state.profile && state.profile.memberId !== L.memberId) { err.textContent = "This claude.ai account already belongs to another family member."; err.hidden = false; return; }
-      writeSession(id);
+      writeSession(id, $("loginKeep").checked);
       $("loginPw").value = "";
       if (!state.profile || state.profile.loginId !== id) {
         await state.db.doc("inbox/" + state.uid).set({ loginId: id, proof: await sha("p:" + dk), memberId: L.memberId, touchedAt: Date.now() });
@@ -1276,6 +1358,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const c = snap.exists && snap.data().currency;
       if (c && c !== state.currency) { state.currency = c; fmtCache = {}; renderAll(); }
     });
+    db.doc("settings/categories").onSnapshot((snap) => { custom.shared = readCats(snap); renderChips(); renderBreakdown(); renderLedger(); });
 
     if (state.role === "none") {
       $("offline").textContent = "Sign in to claude.ai to use the family register.";
@@ -1289,6 +1372,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const live = (ref, fn) => ref.onSnapshot(fn, () => { state.loaded = true; renderAll(); });
       live(db.doc("directory/main"), (s) => { state.directory = (s.exists && s.data().members) || []; memberDerive(); renderLogin(); });
       live(db.doc("people/" + state.uid), (s) => { state.profile = s.exists ? s.data() : null; state.gotProfile = true; memberDerive(); renderLogin(); });
+      live(db.doc(`inbox/${state.uid}/prefs/categories`), (s) => { custom.mine = readCats(s); renderChips(); renderBreakdown(); renderLedger(); });
       live(db.doc("inbox/" + state.uid), (s) => { state.claim = s.exists ? s.data() : null; state.gotClaim = true; memberDerive(); renderLogin(); });
       live(db.collection(`people/${state.uid}/entries`).limit(1000), (s) => { state.accepted = s.docs.map(toEntry); state.gotAccepted = true; memberDerive(); });
       live(db.collection(`inbox/${state.uid}/items`).limit(1000), (s) => { state.pending = s.docs.map(toEntry); state.gotPending = true; memberDerive(); });
