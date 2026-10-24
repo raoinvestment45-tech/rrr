@@ -17,6 +17,7 @@
   --lime: #9fe870;
   --lime-hover: #8edc5c;
   --on-lime: #163300;
+  --on-forest: #ffffff;
   --accent: #163300;
   --pos: #2f6b10;
   --danger: #c4282d;
@@ -70,18 +71,18 @@ h2 { font-family: var(--font-display); font-size: 22px; font-weight: 800; letter
 .monthnav .m { min-width: 120px; text-align: center; font-weight: 600; font-size: 14.5px; }
 
 /* Hero balance card */
-.hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; background: var(--forest); color: #fff; border-radius: 28px; padding: 24px 22px; }
-.hero .label { color: rgba(255,255,255,.75); font-weight: 600; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; background: var(--forest); color: var(--on-forest); border-radius: 28px; padding: 24px 22px; }
+.hero .label { color: var(--on-forest); opacity: .75; font-weight: 600; }
 .total { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-size: clamp(44px, 12vw, 66px); font-weight: 900; letter-spacing: -.04em; line-height: 1; color: var(--lime); }
 .stats { display: flex; gap: 8px; flex-wrap: wrap; }
 .stats div { display: grid; gap: 0; padding: 10px 14px; border-radius: 16px; }
 .hero .stats div { background: rgba(159,232,112,.12); }
 .stats .v { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
-.hero .stats .v { color: #fff; }
+.hero .stats .v { color: var(--on-forest); }
 .hero .stats .v.pos { color: var(--lime); } .hero .stats .v.neg { color: #ffb3a8; }
 .stats .v.pos { color: var(--pos); } .stats .v.neg { color: var(--danger); }
 .card .stats div { background: var(--surface); }
-.hero .chip { background: transparent; border: 1.5px solid rgba(255,255,255,.35); color: #fff; }
+.hero .chip { background: transparent; border: 1.5px solid color-mix(in srgb, var(--on-forest) 35%, transparent); color: var(--on-forest); }
 .hero .chip:hover { border-color: var(--lime); }
 .hero .chip[aria-pressed="true"] { background: var(--lime); color: var(--on-lime); border-color: var(--lime); }
 .hero .chip .dot { box-shadow: none; }
@@ -105,7 +106,7 @@ h2 { font-family: var(--font-display); font-size: 22px; font-weight: 800; letter
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 14px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; transition: background .12s, border-color .12s; }
 .chip:hover { border-color: var(--forest); }
-.chip[aria-pressed="true"] { background: var(--forest); color: #fff; border-color: var(--forest); }
+.chip[aria-pressed="true"] { background: var(--forest); color: var(--on-forest); border-color: var(--forest); }
 :root[data-theme="dark"] .chip[aria-pressed="true"] { background: var(--lime); color: var(--on-lime); border-color: var(--lime); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip[aria-pressed="true"] { background: var(--lime); color: var(--on-lime); border-color: var(--lime); } }
 .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
@@ -216,6 +217,30 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .newcat { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .newcat .field { flex: 1 1 160px; }
 .newcat .iconin { flex: 0 0 64px; text-align: center; font-size: 18px; }
+.customize { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20; border: 0; border-radius: 999px; padding: 12px 18px; font-weight: 700; background: var(--forest); color: var(--on-forest); box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+.designing body { padding-bottom: 62vh; }
+.designing [data-edit], .designing #cats .chip:not(.addchip) .ctext { outline: 1.5px dashed color-mix(in srgb, var(--ink) 45%, transparent); outline-offset: 3px; border-radius: 4px; cursor: text; }
+.designing [data-edit]:hover { outline-color: var(--ink); }
+.designing .design-sel { outline: 2.5px solid var(--lime) !important; }
+.designing [contenteditable="true"] { outline: 2.5px solid var(--lime) !important; background: color-mix(in srgb, var(--lime) 20%, transparent); }
+.designbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 30; width: min(560px, 100%); max-height: 58vh; overflow-y: auto;
+  background: var(--surface); color: var(--ink); border-radius: 24px 24px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.25);
+  padding: 16px max(16px, env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; }
+.db-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; position: sticky; top: -16px; background: var(--surface); padding-block: 4px; z-index: 1; }
+.db-head b { font-family: var(--font-display); font-size: 20px; font-weight: 800; }
+.db-actions { display: flex; gap: 6px; align-items: center; }
+.db-actions .btn { padding: 9px 18px; font-size: 15px; }
+.db-sec { display: grid; gap: 10px; padding: 12px; border-radius: 16px; background: var(--panel); }
+.db-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.db-sel { flex: 1 1 140px; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-row .num { min-width: 46px; text-align: center; font-weight: 700; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.swatch { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; }
+.swatch input { width: 38px; height: 32px; border: 0; padding: 0; background: none; border-radius: 8px; cursor: pointer; flex: none; }
+.sliders { display: grid; gap: 8px; }
+.slider { display: grid; grid-template-columns: 110px 1fr 56px; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 500; }
+.slider input { width: 100%; accent-color: var(--forest); }
+.slider .num { text-align: right; color: var(--muted); }
 .rolenote { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .logincard { max-width: 420px; width: 100%; justify-self: center; }
 .loginform { display: grid; gap: 8px; }
@@ -230,10 +255,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+<style id="designStyle"></style>
 
 <div class="wrap">
   <header class="top">
-    <div class="brand"><span class="logo" id="logoSym" aria-hidden="true">₹</span><div class="nm">Family Expense Register<small id="sub">Everyday money, kept together</small></div></div>
+    <div class="brand"><span class="logo" id="logoSym" aria-hidden="true">₹</span><div class="nm"><span data-edit="brand">Family Expense Register</span><small id="sub" data-edit="tagline">Everyday money, kept together</small></div></div>
     <div class="monthnav">
       <button class="iconbtn" id="prev" aria-label="Previous month">‹</button>
       <div class="m" id="monthLabel">—</div>
@@ -244,14 +270,14 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   <div id="offline" class="notice" hidden>Sign in to claude.ai to open your family register. Entries are saved to your account and shared with the family members you invite.</div>
 
   <section class="hero" aria-label="Month summary">
-    <div class="label" id="totalLabel">Spent this month</div>
+    <div class="label" id="totalLabel" data-dyn="1">Spent this month</div>
     <div class="total" id="total">—</div>
     <div class="stats">
-      <div><span class="label">Income</span><span class="v" id="sIncome">—</span></div>
-      <div><span class="label">Balance</span><span class="v" id="sBal">—</span></div>
-      <div><span class="label">Today</span><span class="v" id="sToday">—</span></div>
-      <div><span class="label">Daily average</span><span class="v" id="sAvg">—</span></div>
-      <div><span class="label">Entries</span><span class="v" id="sCount">—</span></div>
+      <div><span class="label" data-edit="stat-income">Income</span><span class="v" id="sIncome">—</span></div>
+      <div><span class="label" data-edit="stat-balance">Balance</span><span class="v" id="sBal">—</span></div>
+      <div><span class="label" data-edit="stat-today">Today</span><span class="v" id="sToday">—</span></div>
+      <div><span class="label" data-edit="stat-daily-average">Daily average</span><span class="v" id="sAvg">—</span></div>
+      <div><span class="label" data-edit="stat-entries">Entries</span><span class="v" id="sCount">—</span></div>
     </div>
     <div class="chips" id="filter" aria-label="Show"></div>
   </section>
@@ -259,8 +285,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   <div class="rolenote" id="roleNote" hidden><span id="roleText"></span><button type="button" class="ghost" id="logoutBtn">Log out</button></div>
 
   <section class="card logincard" id="loginCard" hidden aria-label="Log in">
-    <h2>Log in</h2>
-    <p class="hint">Use the login ID and password the admin made for you.</p>
+    <h2 data-edit="title-log-in">Log in</h2>
+    <p class="hint" data-edit="hint-login">Use the login ID and password the admin made for you.</p>
     <form class="loginform" id="loginForm" autocomplete="off">
       <label class="label" for="loginId">Login ID</label>
       <input class="field" id="loginId" autocapitalize="none" autocomplete="username" spellcheck="false">
@@ -274,9 +300,9 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 
   <form class="card formcard" id="form" autocomplete="off" aria-label="Add an entry">
     <div class="seg" role="group" aria-label="Entry type">
-      <button type="button" id="kindExp" aria-pressed="true">Expense</button>
-      <button type="button" id="kindInc" aria-pressed="false">Income</button>
-      <button type="button" id="kindTr" aria-pressed="false">Transfer</button>
+      <button type="button" id="kindExp" aria-pressed="true" data-edit="mode-expense">Expense</button>
+      <button type="button" id="kindInc" aria-pressed="false" data-edit="mode-income">Income</button>
+      <button type="button" id="kindTr" aria-pressed="false" data-edit="mode-transfer">Transfer</button>
     </div>
     <div class="amountrow">
       <span class="cur" id="curSym">₹</span>
@@ -287,7 +313,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       <input class="field" id="date" type="date" aria-label="Date">
     </div>
     <div class="group">
-      <span class="label" id="catLabel">Category</span>
+      <span class="label" id="catLabel" data-dyn="1">Category</span>
       <div class="chips" id="cats"></div>
       <div class="newcat" id="newCatForm" hidden>
         <input class="field iconin" id="newCatIcon" maxlength="4" placeholder="🏷️" aria-label="Icon (an emoji, optional)">
@@ -298,40 +324,40 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       <div id="catTools" hidden><button type="button" class="ghost" id="removeCat"></button></div>
     </div>
     <div class="group" id="payerGroup">
-      <span class="label" id="payerLabel">Paid by</span>
+      <span class="label" id="payerLabel" data-dyn="1">Paid by</span>
       <div class="chips" id="payers"></div>
       <p class="hint" id="payerHint" hidden>Add yourself and your family below to choose who paid.</p>
     </div>
     <div class="group" id="toGroup" hidden>
-      <span class="label">To</span>
+      <span class="label" data-edit="label-to">To</span>
       <div class="chips" id="toChips"></div>
       <p class="hint" id="trHint"></p>
     </div>
     <p class="err" id="formErr" hidden></p>
     <div class="actions">
       <button type="button" class="ghost" id="cancelEdit" hidden>Cancel</button>
-      <button type="submit" class="btn" id="save">Add expense</button>
+      <button type="submit" class="btn" id="save" data-dyn="1">Add expense</button>
     </div>
   </form>
 
   <section class="card t-sky" aria-label="Daily balance">
     <div class="ledhead">
-      <h2>Daily balance</h2>
+      <h2 data-edit="title-daily-balance">Daily balance</h2>
       <span class="hint" id="balWho"></span>
     </div>
     <div class="stats" id="balLine"></div>
     <div class="tablewrap">
       <table class="bal">
-        <thead><tr><th scope="col">Day</th><th scope="col">Opening</th><th scope="col">Money in</th><th scope="col">Money out</th><th scope="col">Closing</th></tr></thead>
+        <thead><tr><th scope="col" data-edit="col-day">Day</th><th scope="col" data-edit="col-opening">Opening</th><th scope="col" data-edit="col-money-in">Money in</th><th scope="col" data-edit="col-money-out">Money out</th><th scope="col" data-edit="col-closing">Closing</th></tr></thead>
         <tbody id="balBody"></tbody>
       </table>
     </div>
-    <p class="hint">Closing = opening + money in − money out. Money in and out include transfers between family members. Set each person's starting amount under Family.</p>
+    <p class="hint" data-edit="hint-balance">Closing = opening + money in − money out. Money in and out include transfers between family members. Set each person's starting amount under Family.</p>
   </section>
 
   <section class="card t-bubble" aria-label="Who owes whom">
     <div class="ledhead">
-      <h2>Who owes whom</h2>
+      <h2 data-edit="title-who-owes-whom">Who owes whom</h2>
       <span class="hint">All time, from loans and repayments</span>
     </div>
     <div class="debts" id="debts"></div>
@@ -339,30 +365,30 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 
   <section class="split" id="breakdown" aria-label="Breakdown">
     <div class="card t-tangerine">
-      <h2>By category</h2>
+      <h2 data-edit="title-by-category">By category</h2>
       <div class="bars" id="catBars"></div>
     </div>
     <div class="card t-mint">
-      <h2>Income by source</h2>
+      <h2 data-edit="title-income-by-source">Income by source</h2>
       <div class="bars" id="srcBars"></div>
     </div>
   </section>
 
   <section class="card t-sun" id="personCard" aria-label="Spending by person">
-    <h2>Spending by person</h2>
+    <h2 data-edit="title-spending-by-person">Spending by person</h2>
     <div class="stack" id="memberStack"></div>
     <div class="bars" id="memberBars"></div>
   </section>
 
   <section class="card t-grape">
-    <h2>Entries</h2>
+    <h2 data-edit="title-entries">Entries</h2>
     <div class="ledger" id="ledger">
       <div class="empty"><b>Loading your register…</b></div>
     </div>
   </section>
 
   <section class="card t-lime" id="familyCard" aria-label="Family">
-    <h2>Family</h2>
+    <h2 data-edit="title-family">Family</h2>
     <div class="members" id="members"></div>
     <form class="row" id="memberForm" autocomplete="off">
       <input class="field" id="memberName" placeholder="Add a name, e.g. Priya" maxlength="30" aria-label="Family member name">
@@ -383,8 +409,31 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
         <option value="JPY">¥ JPY</option>
       </select>
     </div>
+    <div class="settings" id="designLockRow" hidden>
+      <span class="label">Design is finalised and locked.</span>
+      <button type="button" class="ghost" id="designUnlock">Unlock to customize</button>
+    </div>
   </section>
 </div>
+<button type="button" class="customize" id="customizeBtn" hidden>🎨 Customize</button>
+<aside class="designbar" id="designBar" hidden aria-label="Customize design">
+  <div class="db-head">
+    <b>Customize</b>
+    <div class="db-actions"><button type="button" class="ghost" id="designCancel">Close</button><button type="button" class="btn" id="designFinal">Finalise</button></div>
+  </div>
+  <p class="hint">Tap any outlined text to rename it, including categories. Your changes are a draft only you see until you tap Finalise.</p>
+  <div class="db-sec">
+    <span class="label">Selected item</span>
+    <div class="db-row"><span id="selName" class="db-sel"></span><button type="button" class="iconbtn" id="selDown" aria-label="Smaller">−</button><span id="selSize" class="num"></span><button type="button" class="iconbtn" id="selUp" aria-label="Bigger">+</button><button type="button" class="ghost" id="selReset">Reset</button></div>
+  </div>
+  <div class="db-sec">
+    <div class="db-row"><span class="label">Colours for</span><div class="seg" id="themePick"><button type="button" data-theme="light">Light mode</button><button type="button" data-theme="dark">Dark mode</button></div></div>
+    <div class="chips" id="presets"></div>
+    <div class="swatches" id="colorGrid"></div>
+  </div>
+  <div class="db-sec"><span class="label">Sizes</span><div id="sliders" class="sliders"></div></div>
+  <button type="button" class="ghost" id="designResetAll">Reset to original design</button>
+</aside>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -466,7 +515,9 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const d = new Date(state.year, state.month, 1);
     $("monthLabel").textContent = d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
     $("next").disabled = isCurrentMonth();
-    $("totalLabel").textContent = isCurrentMonth() ? "Spent this month" : "Spent in " + d.toLocaleDateString(undefined, { month: "long" });
+    const tl = $("totalLabel");
+    if (isCurrentMonth()) tl.dataset.edit = "total-now"; else delete tl.dataset.edit;
+    if (document.activeElement !== tl) tl.textContent = isCurrentMonth() ? T("total-now", "Spent this month") : "Spent in " + d.toLocaleDateString(undefined, { month: "long" });
     $("curSym").textContent = curSymbol();
     $("logoSym").textContent = curSymbol();
     $("currency").value = state.currency;
@@ -498,14 +549,16 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   }
 
   function renderChips() {
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#cats .ctext")) return; // renaming a category
     const inc = state.kind === "income", tr = state.kind === "transfer";
     $("kindExp").setAttribute("aria-pressed", String(state.kind === "expense"));
     $("kindInc").setAttribute("aria-pressed", String(inc));
     $("kindTr").setAttribute("aria-pressed", String(tr));
-    $("catLabel").textContent = tr ? "Type" : inc ? "Source" : "Category";
-    $("payerLabel").textContent = tr ? "From" : inc ? "Received by" : "Paid by";
+    const setDyn = (id, key, def) => { const e = $(id); e.dataset.edit = key; if (document.activeElement !== e) e.textContent = T(key, def); };
+    setDyn("catLabel", "label-cat-" + state.kind, tr ? "Type" : inc ? "Source" : "Category");
+    setDyn("payerLabel", "label-payer-" + state.kind, tr ? "From" : inc ? "Received by" : "Paid by");
     $("note").placeholder = tr ? "Note, e.g. for school fees" : inc ? "Where did it come from?" : "What was it for?";
-    if (!state.editingId) $("save").textContent = tr ? "Record transfer" : inc ? "Add income" : "Add expense";
+    if (!state.editingId) setDyn("save", "button-save-" + state.kind, tr ? "Record transfer" : inc ? "Add income" : "Add expense");
     const cats = $("cats"); cats.replaceChildren();
     const opts = tr ? TRANSFER_TYPES.slice() : allCats(inc ? "income" : "expense");
     const cur = tr ? state.ttype : inc ? state.src : state.cat;
@@ -514,7 +567,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     opts.forEach((c) => {
       const b = el("button", "chip"); b.type = "button";
       const ic = el("span", null, iconFor(c)); ic.setAttribute("aria-hidden", "true");
-      b.append(ic, document.createTextNode(c));
+      b.append(ic, el("span", "ctext", alias(c))); b.dataset.cat = c;
       b.style.setProperty("--c", catTone(c));
       b.setAttribute("aria-pressed", String(cur === c));
       b.onclick = () => { if (tr) state.ttype = c; else if (inc) state.src = c; else state.cat = c; renderChips(); };
@@ -593,7 +646,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
     const max = cats.length ? cats[0][1] : 0;
     if (!cats.length) catBars.append(el("p", "hint", state.loaded ? "Nothing spent yet this month." : "…"));
-    cats.slice(0, 6).forEach(([c, v]) => catBars.append(bar(`${iconFor(c)} ${c}`, v, max)));
+    cats.slice(0, 6).forEach(([c, v]) => catBars.append(bar(`${iconFor(c)} ${alias(c)}`, v, max)));
     if (cats.length > 6) {
       const rest = cats.slice(6).reduce((s, x) => s + x[1], 0);
       catBars.append(bar(`${cats.length - 6} more`, rest, max));
@@ -604,7 +657,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     visibleIncome().forEach((e) => { bySrc[e.category] = (bySrc[e.category] || 0) + e.amount; });
     const srcs = Object.entries(bySrc).sort((a, b) => b[1] - a[1]);
     if (!srcs.length) srcBars.append(el("p", "hint", state.loaded ? "No income recorded this month. Switch the form to Income to add some." : "…"));
-    srcs.forEach(([c, v]) => srcBars.append(bar(`${iconFor(c)} ${c}`, v, srcs[0][1])));
+    srcs.forEach(([c, v]) => srcBars.append(bar(`${iconFor(c)} ${alias(c)}`, v, srcs[0][1])));
 
     const all = state.expenses.filter(isExpense);
     const byM = {};
@@ -678,8 +731,9 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const admin = state.role === "owner";
     const d = el("div", "d");
     if (admin) { d.tabIndex = 0; d.setAttribute("role", "button"); d.setAttribute("aria-label", "Edit " + (e.note || e.category)); }
-    if (isTransfer(e)) d.append(el("b", null, e.note || `${e.category} to ${nm(toM)}`), el("span", null, `${nm(m)} → ${nm(toM)} · ${e.category}`));
-    else d.append(el("b", null, e.note || e.category), el("span", null, e.note ? `${e.category} · ${nm(m)}` : nm(m)));
+    const cn = alias(e.category);
+    if (isTransfer(e)) d.append(el("b", null, e.note || `${cn} to ${nm(toM)}`), el("span", null, `${nm(m)} → ${nm(toM)} · ${cn}`));
+    else d.append(el("b", null, e.note || cn), el("span", null, e.note ? `${cn} · ${nm(m)}` : nm(m)));
     if (e.pending) { const pl = el("span", "pill", "Waiting for admin"); d.querySelector("span").prepend(pl); }
     if (admin) {
       d.onclick = () => startEdit(e);
@@ -1331,7 +1385,202 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     if (m.uid) await state.db.doc("people/" + m.uid).delete();
   }
 
+  // ---------- customize (admin) ----------
+  // The finished design lives in settings/design (everyone reads it); work in progress stays in
+  // designDraft/main, which only the admin can read, until "Finalise" copies it over and locks it.
+  const TOKENS = [["--bg", "Page background"], ["--panel", "Panels"], ["--surface", "Cards & boxes"], ["--ink", "Text"], ["--muted", "Soft text"],
+    ["--forest", "Main colour"], ["--lime", "Highlight"], ["--pos", "Money in"], ["--danger", "Warnings"]];
+  const BASE = {
+    light: { "--bg": "#ffffff", "--panel": "#f2f4ef", "--surface": "#ffffff", "--ink": "#0e0f0c", "--muted": "#5d655a", "--forest": "#163300", "--lime": "#9fe870", "--pos": "#2f6b10", "--danger": "#c4282d" },
+    dark: { "--bg": "#0f110e", "--panel": "#191c17", "--surface": "#262b23", "--ink": "#edf0ea", "--muted": "#a1a99d", "--forest": "#163300", "--lime": "#9fe870", "--pos": "#9fe870", "--danger": "#ff7a7a" },
+  };
+  const PRESETS = [
+    ["Fresh lime", {}, {}],
+    ["Ocean", { "--forest": "#0b3954", "--lime": "#7fdbff", "--pos": "#0b7a75", "--panel": "#eef5f8" }, { "--forest": "#0b3954", "--lime": "#7fdbff", "--pos": "#7fdbff", "--bg": "#0b1419", "--panel": "#122029", "--surface": "#1b2d38" }],
+    ["Sunset", { "--forest": "#4a1c2b", "--lime": "#ffb36b", "--pos": "#2e7d32", "--panel": "#fbf1ea" }, { "--forest": "#4a1c2b", "--lime": "#ffb36b", "--pos": "#ffb36b", "--bg": "#160d10", "--panel": "#22151a", "--surface": "#321f26" }],
+    ["Grape", { "--forest": "#2d1b69", "--lime": "#c6b4ff", "--pos": "#2f7d5b", "--panel": "#f3f0fb" }, { "--forest": "#2d1b69", "--lime": "#c6b4ff", "--pos": "#9be0c0", "--bg": "#110d1c", "--panel": "#1a1529", "--surface": "#261f3b" }],
+    ["Rose", { "--forest": "#5c1a3a", "--lime": "#ffb3d1", "--pos": "#2f6b10", "--panel": "#fcf0f5" }, { "--forest": "#5c1a3a", "--lime": "#ffb3d1", "--pos": "#b6e39b", "--bg": "#170c12", "--panel": "#24131c", "--surface": "#331c28" }],
+    ["Mono", { "--forest": "#111111", "--lime": "#e6e6e6", "--pos": "#2f6b10", "--panel": "#f3f3f3" }, { "--forest": "#000000", "--lime": "#e6e6e6", "--pos": "#b6e39b", "--bg": "#0d0d0d", "--panel": "#181818", "--surface": "#242424" }],
+  ];
+  const SLIDERS = [["scale", "Overall size", 80, 130, 100, "%"], ["num", "Big numbers", 60, 150, 100, "%"], ["radius", "Roundness", 0, 40, 24, "px"], ["width", "Page width", 480, 1100, 680, "px"], ["gap", "Spacing", 8, 44, 20, "px"]];
+  const blankDesign = () => ({ texts: {}, aliases: {}, sizes: {}, colors: { light: {}, dark: {} }, scale: 100, num: 100, radius: 24, width: 680, gap: 20, locked: false });
+  const cleanDesign = (d) => {
+    const b = blankDesign(); d = d || {};
+    const obj = (o) => (o && typeof o === "object" && !Array.isArray(o) ? o : {});
+    const strs = (o) => Object.fromEntries(Object.entries(obj(o)).filter(([, v]) => typeof v === "string").map(([k, v]) => [k, v.slice(0, 80)]));
+    const hexes = (o) => Object.fromEntries(Object.entries(obj(o)).filter(([k, v]) => TOKENS.some((t) => t[0] === k) && /^#[0-9a-f]{6}$/i.test(v)));
+    SLIDERS.forEach(([k, , lo, hi]) => { const v = Number(d[k]); b[k] = Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : b[k]; });
+    b.texts = strs(d.texts); b.aliases = strs(d.aliases);
+    b.sizes = Object.fromEntries(Object.entries(obj(d.sizes)).filter(([, v]) => Number.isFinite(v) && v >= 50 && v <= 250));
+    b.colors = { light: hexes(obj(d.colors).light), dark: hexes(obj(d.colors).dark) };
+    b.locked = !!d.locked;
+    return b;
+  };
+  state.design = blankDesign(); state.draft = null; state.designing = false; state.sel = null; state.editTheme = null;
+  const cur = () => (state.designing && state.draft ? state.draft : state.design);
+  const DEFS = {};
+  const T = (key, def) => { DEFS[key] = def; const v = cur().texts[key]; return v == null ? def : v; };
+  const alias = (c) => cur().aliases[c] || c;
+
+  function lum(hexc) {
+    const n = parseInt(hexc.slice(1), 16), ch = [n >> 16, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  }
+  function themeVars(theme, over) {
+    const c = { ...BASE[theme], ...over };
+    const onLime = lum(c["--lime"]) > 0.4 ? (lum(c["--forest"]) < 0.2 ? c["--forest"] : "#111111") : "#ffffff";
+    const onForest = lum(c["--forest"]) > 0.45 ? "#111111" : "#ffffff";
+    const v = { ...c, "--on-lime": onLime, "--on-forest": onForest, "--lime-hover": `color-mix(in srgb, ${c["--lime"]} 86%, #000)` };
+    if (Object.keys(over).length) Object.assign(v, { "--line": `color-mix(in srgb, ${c["--ink"]} 13%, ${c["--bg"]})`, "--soft": `color-mix(in srgb, ${c["--ink"]} 8%, ${c["--panel"]})` });
+    if (theme === "dark") v["color-scheme"] = "dark";
+    return Object.entries(v).map(([k, x]) => `${k}: ${x};`).join(" ");
+  }
+  function applyDesign() {
+    const d = cur();
+    let css = `:root { ${themeVars("light", d.colors.light)} --r: ${d.radius}px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ${themeVars("dark", d.colors.dark)} } }
+:root[data-theme="dark"] { ${themeVars("dark", d.colors.dark)} }
+.wrap { zoom: ${d.scale / 100}; max-width: ${d.width}px; gap: ${d.gap}px; }
+.total { font-size: calc(clamp(44px, 12vw, 66px) * ${d.num / 100}); }
+#amount { font-size: calc(42px * ${d.num / 100}); }
+.hero { border-radius: calc(var(--r) + 4px); }
+`;
+    Object.entries(d.sizes).forEach(([k, v]) => { css += `[data-edit="${CSS.escape(k)}"] { zoom: ${v / 100}; }\n`; });
+    let tag = document.getElementById("designStyle");
+    if (!tag) { tag = document.createElement("style"); tag.id = "designStyle"; document.head.appendChild(tag); }
+    tag.textContent = css;
+    document.querySelectorAll("[data-edit]:not([data-dyn])").forEach((e) => {
+      const k = e.dataset.edit;
+      if (!(k in DEFS)) DEFS[k] = e.textContent;
+      if (document.activeElement !== e) e.textContent = d.texts[k] == null ? DEFS[k] : d.texts[k];
+    });
+    renderDesignControls();
+  }
+
+  let draftTimer;
+  function touchDraft() {
+    applyDesign(); renderAll();
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => { state.db.doc("designDraft/main").set(state.draft).catch((e) => toast(errText(e))); }, 600);
+  }
+  function startDesign() {
+    state.draft = cleanDesign(state.savedDraft || state.design);
+    state.draft.locked = false;
+    state.designing = true; state.sel = null;
+    state.editTheme = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" ? "dark" : "light";
+    state.hostTheme = document.documentElement.getAttribute("data-theme");
+    document.documentElement.classList.add("designing");
+    applyDesign(); renderAll();
+    toast("Tap any outlined text to rename it");
+  }
+  function stopDesign() {
+    state.designing = false; state.sel = null;
+    document.documentElement.classList.remove("designing");
+    if (state.hostTheme == null) document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", state.hostTheme);
+    document.querySelectorAll(".design-sel").forEach((e) => e.classList.remove("design-sel"));
+    applyDesign(); renderAll();
+  }
+
+  function renderDesignControls() {
+    const owner = state.role === "owner";
+    $("customizeBtn").hidden = !owner || state.designing || state.design.locked;
+    $("designLockRow").hidden = !owner || !state.design.locked;
+    $("designBar").hidden = !owner || !state.designing;
+    if (!state.designing) return;
+    const d = state.draft;
+    $("selName").textContent = state.sel ? `“${(document.querySelector(`[data-edit="${CSS.escape(state.sel)}"]`) || {}).textContent || state.sel}”` : "Tap an item to resize it";
+    $("selSize").textContent = state.sel ? (d.sizes[state.sel] || 100) + "%" : "";
+    ["selDown", "selUp", "selReset"].forEach((id) => { $(id).disabled = !state.sel; });
+    document.querySelectorAll("#themePick button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === state.editTheme)));
+    const grid = $("colorGrid");
+    if (!grid.children.length) {
+      TOKENS.forEach(([k, label]) => {
+        const lab = el("label", "swatch");
+        const inp = el("input"); inp.type = "color"; inp.dataset.token = k; inp.id = "tok" + k;
+        inp.oninput = () => { state.draft.colors[state.editTheme][k] = inp.value; touchDraft(); };
+        lab.append(inp, el("span", null, label)); grid.append(lab);
+      });
+      PRESETS.forEach(([name, l, dk]) => {
+        const b = el("button", "chip", name); b.type = "button";
+        const sw = el("span", "dot"); sw.style.background = (l["--lime"] || BASE.light["--lime"]); sw.style.boxShadow = `inset 0 0 0 3px ${l["--forest"] || BASE.light["--forest"]}`;
+        b.prepend(sw);
+        b.onclick = () => { state.draft.colors = { light: { ...l }, dark: { ...dk } }; touchDraft(); };
+        $("presets").append(b);
+      });
+      SLIDERS.forEach(([k, label, lo, hi, , unit]) => {
+        const row = el("label", "slider");
+        const inp = el("input"); inp.type = "range"; inp.min = lo; inp.max = hi; inp.id = "sl-" + k;
+        const out = el("span", "num"); out.id = "slv-" + k;
+        inp.oninput = () => { state.draft[k] = Number(inp.value); out.textContent = inp.value + unit; touchDraft(); };
+        row.append(el("span", null, label), inp, out); $("sliders").append(row);
+      });
+    }
+    const pal = { ...BASE[state.editTheme], ...d.colors[state.editTheme] };
+    TOKENS.forEach(([k]) => { const i = document.getElementById("tok" + k); if (i && document.activeElement !== i) i.value = pal[k]; });
+    SLIDERS.forEach(([k, , , , , unit]) => { const i = $("sl-" + k); if (document.activeElement !== i) i.value = d[k]; $("slv-" + k).textContent = d[k] + unit; });
+  }
+
+  function select(key) {
+    state.sel = key;
+    document.querySelectorAll(".design-sel").forEach((e) => e.classList.remove("design-sel"));
+    const t = document.querySelector(`[data-edit="${CSS.escape(key)}"]`); if (t) t.classList.add("design-sel");
+    renderDesignControls();
+  }
+  function editInPlace(node, onSave) {
+    node.contentEditable = "true"; node.spellcheck = false; node.focus();
+    const r = document.createRange(); r.selectNodeContents(node); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    const done = () => { node.removeEventListener("keydown", key); node.contentEditable = "false"; onSave(node.textContent.replace(/\s+/g, " ").trim()); };
+    const key = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); node.blur(); } if (ev.key === "Escape") { node.textContent = ""; node.blur(); } };
+    node.addEventListener("keydown", key);
+    node.addEventListener("blur", done, { once: true });
+  }
+  document.addEventListener("click", (ev) => {
+    if (!state.designing) return;
+    if (ev.target.closest("#designBar")) return;
+    const chip = ev.target.closest("#cats .chip:not(.addchip)");
+    if (chip) {
+      ev.preventDefault(); ev.stopPropagation();
+      const c = chip.dataset.cat, span = chip.querySelector(".ctext");
+      editInPlace(span, (v) => { if (!v || v === c) delete state.draft.aliases[c]; else state.draft.aliases[c] = v.slice(0, 30); touchDraft(); });
+      return;
+    }
+    const t = ev.target.closest("[data-edit]");
+    if (t) {
+      ev.preventDefault(); ev.stopPropagation();
+      const k = t.dataset.edit; select(k);
+      if (t.isContentEditable) return;
+      editInPlace(t, (v) => { if (!v || v === DEFS[k]) delete state.draft.texts[k]; else state.draft.texts[k] = v.slice(0, 80); touchDraft(); });
+    }
+  }, true);
+
+  $("customizeBtn").onclick = startDesign;
+  $("designCancel").onclick = () => { stopDesign(); toast("Draft kept. Only you can see it."); };
+  $("designFinal").onclick = async () => {
+    const final = { ...cleanDesign(state.draft), locked: true, at: Date.now() };
+    try {
+      await state.db.doc("settings/design").set(final);
+      await state.db.doc("designDraft/main").set(final);
+      state.design = cleanDesign(final); state.savedDraft = final;
+      stopDesign(); toast("Design finalised for the whole family");
+    } catch (e) { toast(errText(e)); }
+  };
+  $("designUnlock").onclick = async () => {
+    try { await state.db.doc("settings/design").set({ ...state.design, locked: false }); toast("Design unlocked. Tap Customize to edit."); }
+    catch (e) { toast(errText(e)); }
+  };
+  $("designResetAll").onclick = () => {
+    if ($("designResetAll").dataset.armed !== "1") { $("designResetAll").dataset.armed = "1"; $("designResetAll").textContent = "Tap again to reset everything"; return; }
+    $("designResetAll").dataset.armed = ""; $("designResetAll").textContent = "Reset to original design";
+    state.draft = blankDesign(); state.sel = null; touchDraft();
+  };
+  const bump = (n) => { if (!state.sel) return; const v = Math.min(250, Math.max(50, (state.draft.sizes[state.sel] || 100) + n)); if (v === 100) delete state.draft.sizes[state.sel]; else state.draft.sizes[state.sel] = v; touchDraft(); };
+  $("selDown").onclick = () => bump(-10);
+  $("selUp").onclick = () => bump(10);
+  $("selReset").onclick = () => { if (state.sel) { delete state.draft.sizes[state.sel]; touchDraft(); } };
+  document.querySelectorAll("#themePick button").forEach((b) => { b.onclick = () => { state.editTheme = b.dataset.theme; document.documentElement.setAttribute("data-theme", b.dataset.theme); renderDesignControls(); }; });
+
   $("date").value = todayIso();
+  applyDesign();
   renderAll();
 
   (async () => {
@@ -1358,6 +1607,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const c = snap.exists && snap.data().currency;
       if (c && c !== state.currency) { state.currency = c; fmtCache = {}; renderAll(); }
     });
+    db.doc("settings/design").onSnapshot((snap) => {
+      state.design = cleanDesign(snap.exists ? snap.data() : null);
+      if (!state.designing) applyDesign(); else renderDesignControls();
+      renderAll();
+    });
     db.doc("settings/categories").onSnapshot((snap) => { custom.shared = readCats(snap); renderChips(); renderBreakdown(); renderLedger(); });
 
     if (state.role === "none") {
@@ -1379,6 +1633,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       return;
     }
 
+    db.doc("designDraft/main").get().then((s) => { if (s.exists) state.savedDraft = s.data(); }).catch(() => {});
+    renderDesignControls();
     db.collection("members").onSnapshot((snap) => {
       state.members = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => typeof m.name === "string");
       renderChips(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
