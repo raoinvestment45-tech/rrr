@@ -251,6 +251,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .slider { display: grid; grid-template-columns: 110px 1fr 56px; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 500; }
 .slider input { width: 100%; accent-color: var(--forest); }
 .slider .num { text-align: right; color: var(--muted); }
+.viewname { cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 30%, transparent); text-underline-offset: 3px; }
+.viewname:hover { text-decoration-color: currentColor; }
+.chip.viewas { border-style: dashed; }
+[data-preview="1"] #customizeBtn { display: none !important; }
+[data-preview="1"] .rolenote { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 15; background: var(--lime); color: var(--on-lime); box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+[data-preview="1"] #exitPreview { background: var(--forest); color: var(--on-forest); padding: 9px 16px; font-size: 14px; }
 .rolenote { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .logincard { max-width: 420px; width: 100%; justify-self: center; }
 .loginform { display: grid; gap: 8px; }
@@ -292,7 +298,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <div class="chips" id="filter" aria-label="Show"></div>
   </section>
 
-  <div class="rolenote" id="roleNote" hidden><span id="roleText"></span><span><button type="button" class="ghost" id="backupMe">⬇ Download my entries</button><button type="button" class="ghost" id="logoutBtn">Log out</button></span></div>
+  <div class="rolenote" id="roleNote" hidden><span id="roleText"></span><span><button type="button" class="ghost" id="backupMe">⬇ Download my entries</button><button type="button" class="ghost" id="logoutBtn">Log out</button><button type="button" class="btn" id="exitPreview" hidden>Back to admin view</button></span></div>
 
   <section class="card logincard" id="loginCard" hidden aria-label="Log in">
     <h2 data-edit="title-log-in">Log in</h2>
@@ -505,7 +511,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     year: now.getFullYear(), month: now.getMonth(),
     expenses: [], members: [], currency: "INR",
     kind: "expense", cat: "Groceries", src: "Salary", ttype: "Loan", to: null, payer: null, transfers: [], filter: "all", editingId: null,
-    loaded: false, unsubMonth: null, prior: {}, editingMember: null, editingLogin: null,
+    loaded: false, unsubMonth: null, prior: {}, editingMember: null, editingLogin: null, preview: null,
   };
 
   const lastPayerKey = "fer.lastPayer";
@@ -673,6 +679,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
         b.onclick = () => { state.filter = m.id; renderAll(); };
         filter.append(b);
       });
+      const fm = state.filter !== "all" && memberById(state.filter);
+      if (state.role === "owner" && fm && !isAdminMember(fm)) {
+        const v = el("button", "chip viewas", `👁 See ${fm.name}'s app`); v.type = "button";
+        v.onclick = () => startPreview(fm.id);
+        filter.append(v);
+      }
     } else state.filter = "all";
   }
 
@@ -774,14 +786,14 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const mini = el("span", "mini", m ? initials(m.name) : "?"); mini.style.background = colorFor(m);
     who.append(emo, mini);
     who.title = m ? m.name : "Unassigned";
-    const admin = state.role === "owner";
+    const admin = state.role === "owner" && !state.preview;
     const d = el("div", "d");
     if (admin) { d.tabIndex = 0; d.setAttribute("role", "button"); d.setAttribute("aria-label", "Edit " + (e.note || e.category)); }
     const cn = alias(e.category);
     if (isTransfer(e)) d.append(el("b", null, e.note || `${cn} to ${nm(toM)}`), el("span", null, `${nm(m)} → ${nm(toM)} · ${cn}`));
     else d.append(el("b", null, e.note || cn), el("span", null, e.note ? `${cn} · ${nm(m)}` : nm(m)));
     if (e.pending) { const pl = el("span", "pill", "Waiting for admin"); d.querySelector("span").prepend(pl); }
-    else if (state.role === "member" && e.addedByAdmin) { const pl = el("span", "pill", "Added by admin"); d.querySelector("span").prepend(pl); }
+    else if ((state.role === "member" || state.preview) && e.addedByAdmin) { const pl = el("span", "pill", "Added by admin"); d.querySelector("span").prepend(pl); }
     if (admin) {
       d.onclick = () => startEdit(e);
       d.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); startEdit(e); } };
@@ -823,6 +835,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const o = opening(m);
       const obText = `Opening ${fmtSigned(o.amount, true)} · from ${shortDate(o.date)}`;
       const n = el("span", "n", m.name);
+      if (state.role === "owner") {
+        n.classList.add("viewname"); n.tabIndex = 0; n.setAttribute("role", "button");
+        n.title = isAdminMember(m) ? "This is you, the admin" : `See ${m.name}'s app`;
+        n.onclick = () => startPreview(m.id);
+        n.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); startPreview(m.id); } };
+      }
       if (m.uid) n.append(el("span", "pill", "Logged in"));
       if (adminMember() && adminMember().id === m.id) n.append(el("span", "pill", "Admin"));
       row.append(dot, n);
@@ -1063,10 +1081,42 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   }
 
   function renderAll() {
+    if (state.preview) { state.filter = state.preview; state.payer = state.preview; }
     renderHeader(); renderChips(); renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
-    const ro = !state.canWrite;
+    const ro = !state.canWrite || !!state.preview;
     ["amount", "note", "date", "save", "memberName", "currency"].forEach((id) => { $(id).disabled = ro || !state.db; });
     document.querySelector("#memberForm .btn").disabled = ro || !state.db;
+    renderPreviewBar();
+  }
+
+  // ----- admin "view as": shows a family member's own screen, read-only -----
+  const isAdminMember = (m) => !!m && !!adminMember() && adminMember().id === m.id;
+  function startPreview(id) {
+    const m = memberById(id);
+    if (!m || state.role !== "owner") return;
+    if (isAdminMember(m)) { toast(`${m.name} is the admin. The full view you're on now is ${m.name}'s view.`); return; }
+    if (state.designing) stopDesign();
+    if (state.editingId) resetForm();
+    state.preview = id; state.kind = "expense";
+    document.documentElement.dataset.role = "member";
+    document.documentElement.dataset.preview = "1";
+    renderAll(); window.scrollTo({ top: 0 });
+  }
+  function stopPreview() {
+    state.preview = null; state.filter = "all";
+    document.documentElement.dataset.role = state.role;
+    delete document.documentElement.dataset.preview;
+    if (adminMember()) state.payer = adminMember().id;
+    renderAll();
+  }
+  function renderPreviewBar() {
+    if (state.role !== "owner") { $("exitPreview").hidden = true; return; }
+    const m = state.preview && memberById(state.preview);
+    $("roleNote").hidden = !m;
+    $("exitPreview").hidden = !m;
+    $("backupMe").hidden = !!m || state.role === "owner";
+    $("logoutBtn").hidden = !!m || state.role === "owner";
+    if (m) $("roleText").textContent = `👁 Preview of ${m.name}'s app: this is what ${m.name} sees after logging in. Nothing can be changed here.`;
   }
 
   // ---------- form ----------
@@ -1091,7 +1141,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   $("kindInc").onclick = () => setKind("income");
   $("kindTr").onclick = () => setKind("transfer");
   function startEdit(e) {
-    if (!state.canWrite || state.role !== "owner") return;
+    if (!state.canWrite || state.role !== "owner" || state.preview) return;
     state.editingId = e.id;
     $("amount").value = String(e.amount); $("note").value = e.note || ""; $("date").value = e.date;
     state.kind = isIncome(e) ? "income" : isTransfer(e) ? "transfer" : "expense";
@@ -1433,6 +1483,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     } catch (e) { err.textContent = errText(e); err.hidden = false; }
     finally { btn.disabled = false; btn.textContent = "Log in"; }
   });
+  $("exitPreview").onclick = stopPreview;
   $("logoutBtn").onclick = () => { writeSession(""); renderLogin(); toast("Logged out"); };
 
   // admin: create or reset a person's login
@@ -1558,7 +1609,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 
   function renderDesignControls() {
     const owner = state.role === "owner";
-    $("customizeBtn").hidden = !owner || state.designing || state.design.locked;
+    $("customizeBtn").hidden = !owner || state.designing || state.design.locked || !!state.preview;
     $("designLockRow").hidden = !owner || !state.design.locked;
     $("designBar").hidden = !owner || !state.designing;
     if (!state.designing) return;
