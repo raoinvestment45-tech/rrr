@@ -212,6 +212,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--lime) 55%, var(--surface)); color: var(--on-lime); margin-inline: 6px; vertical-align: 1px; }
 .entry .d span .pill { margin-left: 0; }
 .rolenote { margin: 0; padding: 12px 16px; border-radius: 16px; background: color-mix(in srgb, var(--lime) 30%, var(--surface)); color: var(--ink); font-size: 14px; font-weight: 500; }
+.rolenote { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.logincard { max-width: 420px; width: 100%; justify-self: center; }
+.loginform { display: grid; gap: 8px; }
+.loginform .btn { margin-top: 8px; width: 100%; padding: 14px; }
+[data-locked="1"] .wrap > :not(.top):not(#loginCard):not(#offline) { display: none !important; }
 [data-role="member"] #payerGroup, [data-role="member"] #familyCard, [data-role="member"] #personCard, [data-role="member"] #filter { display: none; }
 .settings { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .notice { background: var(--panel); border-radius: var(--r); padding: 16px 18px; font-size: 14px; }
@@ -245,15 +250,18 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <div class="chips" id="filter" aria-label="Show"></div>
   </section>
 
-  <p class="rolenote" id="roleNote" hidden></p>
+  <div class="rolenote" id="roleNote" hidden><span id="roleText"></span><button type="button" class="ghost" id="logoutBtn">Log out</button></div>
 
-  <section class="card" id="joinCard" hidden aria-label="Join the register">
-    <h2>Which one are you?</h2>
-    <p class="hint">Pick your name so your entries go to the right person. The admin confirms it.</p>
-    <div class="group" id="joinChipsWrap"><div class="chips" id="joinChips"></div></div>
-    <form class="row" id="joinForm" autocomplete="off">
-      <input class="field" id="joinName" placeholder="Not listed? Type your name" maxlength="30" aria-label="Your name">
-      <button class="btn" type="submit">Join</button>
+  <section class="card logincard" id="loginCard" hidden aria-label="Log in">
+    <h2>Log in</h2>
+    <p class="hint">Use the login ID and password the admin made for you.</p>
+    <form class="loginform" id="loginForm" autocomplete="off">
+      <label class="label" for="loginId">Login ID</label>
+      <input class="field" id="loginId" autocapitalize="none" autocomplete="username" spellcheck="false">
+      <label class="label" for="loginPw">Password</label>
+      <input class="field" id="loginPw" type="password" autocomplete="current-password">
+      <p class="err" id="loginErr" hidden></p>
+      <button class="btn" type="submit" id="loginBtn">Log in</button>
     </form>
   </section>
 
@@ -397,7 +405,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     year: now.getFullYear(), month: now.getMonth(),
     expenses: [], members: [], currency: "INR",
     kind: "expense", cat: "Groceries", src: "Salary", ttype: "Loan", to: null, payer: null, transfers: [], filter: "all", editingId: null,
-    loaded: false, unsubMonth: null, prior: {}, editingMember: null,
+    loaded: false, unsubMonth: null, prior: {}, editingMember: null, editingLogin: null,
   };
 
   const lastPayerKey = "fer.lastPayer";
@@ -674,7 +682,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const o = opening(m);
       const obText = `Opening ${fmtSigned(o.amount, true)} · from ${shortDate(o.date)}`;
       const n = el("span", "n", m.name);
-      if (m.uid) n.append(el("span", "pill", "Signed in"));
+      if (m.uid) n.append(el("span", "pill", "Logged in"));
       row.append(dot, n);
       if (state.canWrite) {
         const ob = el("button", "ghost s", obText); ob.type = "button";
@@ -695,9 +703,51 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
           try { await state.db.doc("members/" + m.id).update({ archived: true }); toast(m.name + " removed. Past entries keep their name."); }
           catch (err) { toast(errText(err)); }
         };
-        row.append(ob, x);
+        const lg = el("button", "ghost s", m.loginId ? "ID: " + m.loginId : "Create login"); lg.type = "button";
+        lg.setAttribute("aria-label", (m.loginId ? "Change login for " : "Create login for ") + m.name);
+        lg.onclick = () => {
+          state.editingLogin = state.editingLogin === m.id ? null : m.id; state.editingMember = null; renderMembers();
+          const a = document.getElementById("lg-id-" + m.id); if (a) a.focus();
+        };
+        row.append(lg, ob, x);
       } else row.append(el("span", "s", obText));
       box.append(row);
+
+      if (state.editingLogin === m.id) {
+        const f = el("form", "openform"); f.autocomplete = "off";
+        const lab = el("p", "hint", m.loginId
+          ? `${m.name} logs in with “${m.loginId}”. Saving a new password replaces the old one. A new ID makes ${m.name} log in again.`
+          : `Make a login ID and password for ${m.name}. Share them with ${m.name}; they log in with these on their own claude.ai account.`);
+        const idIn = el("input", "field"); idIn.id = "lg-id-" + m.id; idIn.value = m.loginId || m.name.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "");
+        idIn.setAttribute("aria-label", "Login ID"); idIn.placeholder = "Login ID"; idIn.autocapitalize = "none";
+        const pwIn = el("input", "field"); pwIn.id = "lg-pw-" + m.id; pwIn.type = "text"; pwIn.placeholder = m.loginId ? "New password" : "Password";
+        pwIn.setAttribute("aria-label", "Password"); pwIn.autocomplete = "new-password";
+        const save = el("button", "btn", m.loginId ? "Save" : "Create"); save.type = "submit";
+        const cancel = el("button", "ghost", "Cancel"); cancel.type = "button";
+        cancel.onclick = () => { state.editingLogin = null; renderMembers(); };
+        const ferr = el("p", "err"); ferr.hidden = true; ferr.style.flexBasis = "100%";
+        f.append(lab, idIn, pwIn, save, cancel);
+        if (m.loginId) {
+          const rm = el("button", "ghost", "Remove login"); rm.type = "button";
+          rm.onclick = async () => {
+            if (rm.dataset.armed !== "1") { rm.dataset.armed = "1"; rm.textContent = "Remove? " + m.name + " will be logged out"; rm.style.color = "var(--danger)"; return; }
+            try { await removeLogin(m); state.editingLogin = null; toast("Login removed"); } catch (e) { toast(errText(e)); }
+          };
+          f.append(rm);
+        }
+        f.append(ferr);
+        f.onsubmit = async (ev) => {
+          ev.preventDefault();
+          save.disabled = true; ferr.hidden = true;
+          try {
+            await saveLogin(m, idIn.value, pwIn.value);
+            state.editingLogin = null;
+            toast(`Login saved. Share the ID and password with ${m.name}.`);
+          } catch (e) { ferr.textContent = e && e.message && !e.code ? e.message : errText(e); ferr.hidden = false; }
+          finally { save.disabled = false; }
+        };
+        box.append(f);
+      }
 
       if (state.editingMember === m.id) {
         const f = el("form", "openform"); f.autocomplete = "off";
@@ -708,6 +758,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
         const save = el("button", "btn", "Save"); save.type = "submit";
         const cancel = el("button", "ghost", "Cancel"); cancel.type = "button";
         cancel.onclick = () => { state.editingMember = null; renderMembers(); };
+        state.editingLogin = null;
         const lab = el("p", "hint", `How much money ${m.name} had at the start of this date. Daily balances count from here.`);
         f.append(lab, amt, dt, save, cancel);
         f.onsubmit = async (ev) => {
@@ -929,7 +980,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       if (state.role === "member") {
         // family members submit to their own inbox; the admin's page files it in the register
         await state.db.collection(`inbox/${state.uid}/items`).add({ ...body, by: "me", createdAt: Date.now() });
-        await state.db.doc("inbox/" + state.uid).set({ ...(state.claim || {}), touchedAt: Date.now() });
+        await state.db.doc("inbox/" + state.uid).set({ ...(state.claim || { loginId: readSession() }), touchedAt: Date.now() });
         toast("Submitted " + fmt(amount) + ". Only the admin can change it now.");
         const [y, m] = date.split("-").map(Number);
         if (y !== state.year || m - 1 !== state.month) { state.year = y; state.month = m - 1; }
@@ -1056,7 +1107,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       await setIfChanged("directory/main", { members: ms.map((m) => ({ id: m.id, name: m.name, color: m.color || 0, order: m.order || 0, archived: !!m.archived, linked: !!m.uid })) });
       for (const m of ms) if (m.uid) {
         const o = opening(m);
-        await setIfChanged("people/" + m.uid, { memberId: m.id, name: m.name, color: m.color || 0, order: m.order || 0, openingBalance: o.amount, openingDate: o.date });
+        await setIfChanged("people/" + m.uid, { memberId: m.id, name: m.name, loginId: m.loginId || null, color: m.color || 0, order: m.order || 0, openingBalance: o.amount, openingDate: o.date });
       }
     });
   }
@@ -1064,15 +1115,14 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     queue(async () => {
       let m = state.members.find((x) => x.uid === uid);
       if (!m) {
-        const want = claim.claimMemberId && memberById(claim.claimMemberId);
-        if (want && !want.uid) {
-          await state.db.doc("members/" + want.id).update({ uid });
-          m = { ...want, uid };
-        } else {
-          const name = String(claim.claimName || (want && want.name) || "New member").slice(0, 30);
-          const ref = await state.db.collection("members").add({ name, color: state.members.length % 8, order: Date.now(), archived: false, uid });
-          m = { id: ref.id, name, uid, order: Date.now() };
-        }
+        if (!claim.loginId || !claim.proof) return; // not logged in yet; entries wait
+        const t = state.members.find((x) => x.loginId === claim.loginId && !x.archived);
+        const mark = async (status) => { if (claim.status !== status) await state.db.doc("inbox/" + uid).set({ ...claim, status }); };
+        if (!t || t.loginProof !== claim.proof) return mark("rejected");
+        if (t.uid && t.uid !== uid) return mark("taken");
+        await state.db.doc("members/" + t.id).update({ uid });
+        if (claim.status) await state.db.doc("inbox/" + uid).set({ ...claim, status: null });
+        m = { ...t, uid };
         state.members = state.members.filter((x) => x.id !== m.id).concat(m);
         await backfillMirrors(m.id, uid);
         toast(m.name + " joined the register");
@@ -1096,10 +1146,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   // ----- family member view: built from their own copy plus pending submissions -----
   function memberDerive() {
     const p = state.profile, claim = state.claim || {};
-    const selfId = p ? p.memberId : "me";
+    const selfId = p ? p.memberId : (claim.memberId || "me");
     const dir = (state.directory || []).filter((m) => m.id !== selfId);
-    const self = { id: selfId, name: p ? p.name : (claim.claimName || (dir.find((m) => m.id === claim.claimMemberId) || {}).name || "You"),
-      color: p ? p.color : 0, order: p ? p.order : 0, openingBalance: p ? p.openingBalance : 0, openingDate: p ? p.openingDate : firstOf(Date.now()) };
+    const known = (state.directory || []).find((m) => m.id === selfId);
+    const self = { id: selfId, name: p ? p.name : (known ? known.name : "You"),
+      color: p ? p.color : known ? known.color : 0, order: p ? p.order : 0, openingBalance: p ? p.openingBalance : 0, openingDate: p ? p.openingDate : firstOf(Date.now()) };
     state.members = [self, ...dir];
     const pending = state.pending.map((e) => ({ ...e, by: selfId, pending: true }));
     state.all = state.accepted.concat(pending);
@@ -1111,36 +1162,92 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     state.loaded = state.gotAccepted && state.gotPending;
     renderAll();
   }
-  function renderJoin() {
-    const card = $("joinCard");
-    const need = state.role === "member" && state.gotClaim && !state.profile && !(state.claim && (state.claim.claimMemberId || state.claim.claimName));
-    card.hidden = !need;
-    $("form").hidden = need;
-    const waiting = state.role === "member" && !state.profile && !need && state.gotClaim;
-    $("roleNote").textContent = state.role !== "member" ? ""
-      : waiting ? "Your entries are saved and waiting for the admin to confirm you. They join the family register the next time the admin opens it."
-      : "You see only your own money here. Once you submit an entry, only the admin can change or delete it.";
-    $("roleNote").hidden = state.role !== "member";
-    if (!need) return;
-    const box = $("joinChips"); box.replaceChildren();
-    (state.directory || []).filter((m) => !m.archived && !m.linked).forEach((m) => {
-      const b = el("button", "chip"); b.type = "button";
-      const dot = el("span", "dot"); dot.style.background = colorFor(m);
-      b.append(dot, document.createTextNode(m.name));
-      b.onclick = () => claim({ claimMemberId: m.id });
-      box.append(b);
-    });
-    $("joinChipsWrap").hidden = !box.children.length;
+
+  // ----- app login: ID + password made by the admin -----
+  // logins/<sha256(id)> holds a salt and a verifier anyone signed in can check against;
+  // the admin's members/ doc keeps a separate proof, so reading the verifier is not enough to log in.
+  const ITER = 150000;
+  const enc = new TextEncoder();
+  const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const sha = async (s) => hex(await crypto.subtle.digest("SHA-256", enc.encode(s)));
+  const normId = (s) => String(s || "").trim().toLowerCase();
+  async function derive(pw, saltHex, iters) {
+    const salt = new Uint8Array(saltHex.match(/../g).map((h) => parseInt(h, 16)));
+    const key = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveBits"]);
+    return hex(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: iters }, key, 256));
   }
-  async function claim(body) {
-    try { await state.db.doc("inbox/" + state.uid).set({ ...body, touchedAt: Date.now() }); toast("Thanks. You can add entries now."); }
-    catch (e) { toast(errText(e)); }
+  const loginKey = (id) => sha("id:" + normId(id));
+  const sessionKey = "fer.session";
+  function readSession() { try { return localStorage.getItem(sessionKey) || ""; } catch (e) { return state.sessionMem || ""; } }
+  function writeSession(v) { state.sessionMem = v; try { if (v) localStorage.setItem(sessionKey, v); else localStorage.removeItem(sessionKey); } catch (e) {} }
+
+  function loggedIn() {
+    const s = readSession();
+    if (!s) return false;
+    if (state.profile) return state.profile.loginId === s;
+    return !!(state.claim && state.claim.loginId === s && !state.claim.status);
   }
-  $("joinForm").addEventListener("submit", (ev) => {
+  function renderLogin() {
+    if (state.role !== "member") { $("loginCard").hidden = true; $("roleNote").hidden = true; return; }
+    const ready = state.gotClaim && state.gotProfile;
+    const locked = !ready || !loggedIn();
+    document.documentElement.dataset.locked = locked ? "1" : "";
+    $("loginCard").hidden = !ready || !locked;
+    const st = state.claim && state.claim.loginId === readSession() ? state.claim.status : null;
+    $("loginErr").hidden = !st;
+    $("loginErr").textContent = st === "taken" ? "That login is already used on another account. Ask the admin to reset it."
+      : st === "rejected" ? "The admin's app couldn't confirm that login. Check your ID and password, or ask the admin to reset them." : "";
+    const waiting = !locked && !state.profile;
+    $("roleText").textContent = waiting
+      ? `Logged in as ${readSession()}. Your entries are saved and join the family register the next time the admin opens the app.`
+      : `Logged in as ${readSession()}. You see only your own money. Once you submit an entry, only the admin can change or delete it.`;
+    $("roleNote").hidden = locked;
+  }
+  $("loginForm").addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const name = $("joinName").value.trim().slice(0, 30);
-    if (name) claim({ claimName: name });
+    const err = $("loginErr"), btn = $("loginBtn");
+    const id = normId($("loginId").value), pw = $("loginPw").value;
+    if (!id || !pw) { err.textContent = "Enter the login ID and password the admin gave you."; err.hidden = false; return; }
+    if (!(window.crypto && crypto.subtle)) { err.textContent = "This browser can't check passwords. Try another browser."; err.hidden = false; return; }
+    btn.disabled = true; btn.textContent = "Checking…"; err.hidden = true;
+    try {
+      const snap = await state.db.doc("logins/" + await loginKey(id)).get();
+      const L = snap.exists ? snap.data() : null;
+      const dk = L ? await derive(pw, L.salt, L.iterations || ITER) : null;
+      if (!L || (await sha("v:" + dk)) !== L.verifier) { err.textContent = "That ID or password is wrong."; err.hidden = false; return; }
+      if (state.profile && state.profile.memberId !== L.memberId) { err.textContent = "This claude.ai account already belongs to another family member."; err.hidden = false; return; }
+      writeSession(id);
+      $("loginPw").value = "";
+      if (!state.profile || state.profile.loginId !== id) {
+        await state.db.doc("inbox/" + state.uid).set({ loginId: id, proof: await sha("p:" + dk), memberId: L.memberId, touchedAt: Date.now() });
+      }
+      toast("Welcome!");
+      memberDerive(); renderLogin();
+    } catch (e) { err.textContent = errText(e); err.hidden = false; }
+    finally { btn.disabled = false; btn.textContent = "Log in"; }
   });
+  $("logoutBtn").onclick = () => { writeSession(""); renderLogin(); toast("Logged out"); };
+
+  // admin: create or reset a person's login
+  async function saveLogin(m, id, pw) {
+    id = normId(id);
+    if (!/^[a-z0-9._-]{3,30}$/.test(id)) throw new Error("Login ID needs 3–30 letters, numbers, dots, dashes or underscores.");
+    if (pw.length < 6) throw new Error("Password needs at least 6 characters.");
+    if (state.members.some((x) => x.id !== m.id && x.loginId === id)) throw new Error(`“${id}” is already someone else's login ID.`);
+    const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+    const dk = await derive(pw, salt, ITER);
+    const key = await loginKey(id);
+    if (m.loginKey && m.loginKey !== key) await state.db.doc("logins/" + m.loginKey).delete();
+    await state.db.doc("logins/" + key).set({ salt, iterations: ITER, verifier: await sha("v:" + dk), memberId: m.id });
+    const keepUid = m.uid && m.loginId === id ? m.uid : null; // a new ID means the person logs in again
+    await state.db.doc("members/" + m.id).update({ loginId: id, loginKey: key, loginProof: await sha("p:" + dk), uid: keepUid });
+    if (m.uid && !keepUid) await state.db.doc("people/" + m.uid).delete();
+  }
+  async function removeLogin(m) {
+    if (m.loginKey) await state.db.doc("logins/" + m.loginKey).delete();
+    await state.db.doc("members/" + m.id).update({ loginId: null, loginKey: null, loginProof: null, uid: null });
+    if (m.uid) await state.db.doc("people/" + m.uid).delete();
+  }
 
   $("date").value = todayIso();
   renderAll();
@@ -1177,11 +1284,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     }
 
     if (state.role === "member") {
-      Object.assign(state, { accepted: [], pending: [], directory: [], profile: null, claim: null, gotAccepted: false, gotPending: false, gotClaim: false });
+      Object.assign(state, { accepted: [], pending: [], directory: [], profile: null, claim: null, gotAccepted: false, gotPending: false, gotClaim: false, gotProfile: false });
+      renderLogin();
       const live = (ref, fn) => ref.onSnapshot(fn, () => { state.loaded = true; renderAll(); });
-      live(db.doc("directory/main"), (s) => { state.directory = (s.exists && s.data().members) || []; memberDerive(); renderJoin(); });
-      live(db.doc("people/" + state.uid), (s) => { state.profile = s.exists ? s.data() : null; memberDerive(); renderJoin(); });
-      live(db.doc("inbox/" + state.uid), (s) => { state.claim = s.exists ? s.data() : null; state.gotClaim = true; memberDerive(); renderJoin(); });
+      live(db.doc("directory/main"), (s) => { state.directory = (s.exists && s.data().members) || []; memberDerive(); renderLogin(); });
+      live(db.doc("people/" + state.uid), (s) => { state.profile = s.exists ? s.data() : null; state.gotProfile = true; memberDerive(); renderLogin(); });
+      live(db.doc("inbox/" + state.uid), (s) => { state.claim = s.exists ? s.data() : null; state.gotClaim = true; memberDerive(); renderLogin(); });
       live(db.collection(`people/${state.uid}/entries`).limit(1000), (s) => { state.accepted = s.docs.map(toEntry); state.gotAccepted = true; memberDerive(); });
       live(db.collection(`inbox/${state.uid}/items`).limit(1000), (s) => { state.pending = s.docs.map(toEntry); state.gotPending = true; memberDerive(); });
       return;
