@@ -618,8 +618,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const ms = activeMembers();
     // income is always received by the admin (an edited old entry keeps its original person)
     const adm = state.role === "owner" && inc ? adminMember() : null;
-    const editingBy = state.editingId && (state.expenses.find((e) => e.id === state.editingId) || {}).by;
-    const payerList = adm && !state.incomeOthers ? ms.filter((m) => m.id === adm.id || m.id === editingBy) : ms;
+    // income starts on the admin; the admin can still pick anyone else in the family
+    const payerList = adm ? [adm, ...ms.filter((m) => m.id !== adm.id)] : ms;
     if (adm && !payerList.some((m) => m.id === state.payer)) state.payer = adm.id;
     if (ms.length && !ms.some((m) => m.id === state.payer)) state.payer = ms[0].id;
     payerList.forEach((m) => {
@@ -630,11 +630,6 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       b.onclick = () => { state.payer = m.id; try { localStorage.setItem(lastPayerKey, m.id); } catch (e) {} renderChips(); };
       payers.append(b);
     });
-    if (adm && !state.incomeOthers && ms.length > payerList.length) {
-      const more = el("button", "chip addchip", "+ For someone else"); more.type = "button";
-      more.onclick = () => { state.incomeOthers = true; renderChips(); };
-      payers.append(more);
-    }
     $("payerHint").hidden = ms.length > 0;
 
     $("toGroup").hidden = !tr;
@@ -1069,11 +1064,15 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     state.editingId = null;
     $("amount").value = ""; $("note").value = ""; $("date").value = todayIso();
     $("cancelEdit").hidden = true; $("formErr").hidden = true;
-    state.incomeOthers = false;
     if (state.kind === "income" && state.role === "owner" && adminMember()) state.payer = adminMember().id;
     renderChips(); renderLedger();
   }
-  function setKind(k) { if (state.editingId || state.kind === k) return; state.kind = k; state.incomeOthers = false; renderChips(); }
+  function setKind(k) {
+    if (state.editingId || state.kind === k) return;
+    state.kind = k;
+    if (k === "income" && state.role === "owner" && adminMember()) state.payer = adminMember().id;
+    renderChips();
+  }
   $("kindExp").onclick = () => setKind("expense");
   $("kindInc").onclick = () => setKind("income");
   $("kindTr").onclick = () => setKind("transfer");
