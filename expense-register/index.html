@@ -80,6 +80,7 @@ h2 { font-family: var(--font-display); font-size: 22px; font-weight: 800; letter
 .stats .v { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
 .hero .stats .v { color: var(--on-forest); }
 .hero .stats .v.pos { color: var(--lime); } .hero .stats .v.neg { color: #ffb3a8; }
+.total.neg { color: #ffb3a8; }
 .stats .v.pos { color: var(--pos); } .stats .v.neg { color: var(--danger); }
 .card .stats div { background: var(--surface); }
 .hero .chip { background: transparent; border: 1.5px solid color-mix(in srgb, var(--on-forest) 35%, transparent); color: var(--on-forest); }
@@ -290,7 +291,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <div class="total" id="total">—</div>
     <div class="stats">
       <div><span class="label" data-edit="stat-income">Income</span><span class="v" id="sIncome">—</span></div>
-      <div><span class="label" data-edit="stat-balance">Balance</span><span class="v" id="sBal">—</span></div>
+      <div><span class="label" data-edit="stat-spent">Spent</span><span class="v" id="sBal">—</span></div>
       <div><span class="label" data-edit="stat-today">Today</span><span class="v" id="sToday">—</span></div>
       <div><span class="label" data-edit="stat-daily-average">Daily average</span><span class="v" id="sAvg">—</span></div>
       <div><span class="label" data-edit="stat-entries">Entries</span><span class="v" id="sCount">—</span></div>
@@ -554,8 +555,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     $("monthLabel").textContent = d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
     $("next").disabled = isCurrentMonth();
     const tl = $("totalLabel");
-    if (isCurrentMonth()) tl.dataset.edit = "total-now"; else delete tl.dataset.edit;
-    if (document.activeElement !== tl) tl.textContent = isCurrentMonth() ? T("total-now", "Spent this month") : "Spent in " + d.toLocaleDateString(undefined, { month: "long" });
+    if (isCurrentMonth()) tl.dataset.edit = "balance-now"; else delete tl.dataset.edit;
+    if (document.activeElement !== tl) tl.textContent = isCurrentMonth() ? T("balance-now", "Balance this month") : "Balance in " + d.toLocaleDateString(undefined, { month: "long" });
     $("curSym").textContent = curSymbol();
     $("logoSym").textContent = curSymbol();
     $("currency").value = state.currency;
@@ -576,11 +577,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const { days } = monthRange();
     const elapsed = isCurrentMonth() ? new Date().getDate() : days;
     const today = sum(list.filter((e) => e.date === todayIso()));
-    $("total").textContent = state.loaded ? fmt(total) : "—";
-    $("sIncome").textContent = state.loaded ? fmt(income) : "—";
+    // the big number is the month's balance (income − spending); spending sits in the small box
     const bal = income - total;
-    $("sBal").textContent = state.loaded ? (bal < 0 ? "−" : "") + fmt(Math.abs(bal)) : "—";
-    $("sBal").className = "v" + (state.loaded && income ? (bal < 0 ? " neg" : " pos") : "");
+    $("total").textContent = state.loaded ? (bal < 0 ? "−" : "") + fmt(Math.abs(bal)) : "—";
+    $("total").classList.toggle("neg", state.loaded && bal < 0);
+    $("sIncome").textContent = state.loaded ? fmt(income) : "—";
+    $("sBal").textContent = state.loaded ? fmt(total) : "—";
     $("sToday").textContent = state.loaded ? (isCurrentMonth() ? fmt(today) : "—") : "—";
     $("sAvg").textContent = state.loaded ? fmt(total / Math.max(1, elapsed)) : "—";
     $("sCount").textContent = state.loaded ? String(list.length) : "—";
