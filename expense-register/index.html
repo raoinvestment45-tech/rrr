@@ -402,6 +402,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     </form>
     <p class="hint">You are the admin. To let family add entries, use Share and give them Contributor access. Each person sees only their own entries, balance and loans. Only you see everyone, and only you can change or delete entries.</p>
     <div class="settings">
+      <label class="label" for="adminSel">Admin is</label>
+      <select class="field" id="adminSel" style="width:auto"></select>
       <label class="label" for="currency">Currency</label>
       <select class="field" id="currency" style="width:auto">
         <option value="INR">₹ INR</option>
@@ -509,6 +511,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   // ---------- members ----------
   const activeMembers = () => state.members.filter((m) => !m.archived).sort((a, b) => (a.order || 0) - (b.order || 0));
   const memberById = (id) => state.members.find((m) => m.id === id);
+  const adminMember = () => { const ms = activeMembers(); return ms.find((m) => m.isAdmin) || ms[0] || null; };
   const colorFor = (m) => `var(--m${((m && m.color) || 0) % 8 + 1})`;
   const initials = (name) => (name || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
@@ -607,8 +610,13 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 
     const payers = $("payers"); payers.replaceChildren();
     const ms = activeMembers();
+    // income is always received by the admin (an edited old entry keeps its original person)
+    const adm = state.role === "owner" && inc ? adminMember() : null;
+    const editingBy = state.editingId && (state.expenses.find((e) => e.id === state.editingId) || {}).by;
+    const payerList = adm ? ms.filter((m) => m.id === adm.id || m.id === editingBy) : ms;
+    if (adm && !payerList.some((m) => m.id === state.payer)) state.payer = adm.id;
     if (ms.length && !ms.some((m) => m.id === state.payer)) state.payer = ms[0].id;
-    ms.forEach((m) => {
+    payerList.forEach((m) => {
       const b = el("button", "chip"); b.type = "button";
       const dot = el("span", "dot"); dot.style.background = colorFor(m);
       b.append(dot, document.createTextNode(m.name));
@@ -779,6 +787,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   }
 
   function renderMembers() {
+    const sel = $("adminSel");
+    if (document.activeElement !== sel) {
+      sel.replaceChildren(...activeMembers().map((m) => { const o = el("option", null, m.name); o.value = m.id; return o; }));
+      const a = adminMember(); if (a) sel.value = a.id;
+    }
+    sel.disabled = !state.canWrite || !activeMembers().length;
     const box = $("members"); box.replaceChildren();
     const ms = activeMembers();
     if (!ms.length) { box.append(el("p", "hint", state.loaded ? "Start with your own name, then add your spouse, children or anyone else who spends from the family budget." : "…")); }
@@ -789,6 +803,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const obText = `Opening ${fmtSigned(o.amount, true)} · from ${shortDate(o.date)}`;
       const n = el("span", "n", m.name);
       if (m.uid) n.append(el("span", "pill", "Logged in"));
+      if (adminMember() && adminMember().id === m.id) n.append(el("span", "pill", "Admin"));
       row.append(dot, n);
       if (state.canWrite) {
         const ob = el("button", "ghost s", obText); ob.type = "button";
@@ -1166,6 +1181,14 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
         await state.db.collection("members").add({ name, color: used % 8, order: Date.now(), archived: false });
       }
       $("memberName").value = ""; toast(name + " added");
+    } catch (e) { toast(errText(e)); }
+  });
+
+  $("adminSel").addEventListener("change", async () => {
+    const id = $("adminSel").value;
+    try {
+      for (const m of state.members) if (!!m.isAdmin !== (m.id === id)) await state.db.doc("members/" + m.id).update({ isAdmin: m.id === id });
+      toast((memberById(id) || {}).name + " is now shown as the admin");
     } catch (e) { toast(errText(e)); }
   });
 
