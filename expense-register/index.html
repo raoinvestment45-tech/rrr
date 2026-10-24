@@ -223,6 +223,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .cdel { margin-left: 2px; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 14px; line-height: 1; background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); cursor: pointer; }
 .chip-gone .cdel { background: color-mix(in srgb, var(--pos) 18%, transparent); color: var(--pos); }
 .ghost.danger { color: var(--danger); }
+.sheetbox { display: grid; gap: 8px; padding: 14px; border-radius: 18px; background: var(--surface); }
+#sheetLink { color: var(--ink); }
 .btn.backup { background: var(--forest); color: var(--on-forest); }
 .btn.backup:hover:not(:disabled) { background: color-mix(in srgb, var(--forest) 85%, #fff); }
 .customize { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20; border: 0; border-radius: 999px; padding: 12px 18px; font-weight: 700; background: var(--forest); color: var(--on-forest); box-shadow: 0 6px 20px rgba(0,0,0,.2); }
@@ -422,6 +424,18 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <div class="settings">
       <button type="button" class="btn backup" id="backupBtn">⬇ Download backup (Excel)</button>
       <span class="hint">All entries, monthly totals and the family list in one file.</span>
+    </div>
+    <div class="sheetbox">
+      <span class="label">Live Google Sheet backup</span>
+      <div id="sheetSetup" class="newcat">
+        <input class="field" id="sheetUrl" placeholder="Paste your Google Sheet link" aria-label="Google Sheet link" autocomplete="off">
+        <button type="button" class="btn" id="sheetConnect">Connect</button>
+        <p class="hint" style="flex-basis:100%">Make a blank sheet at sheets.google.com and paste its link. The app keeps it updated with every entry while you use it.</p>
+      </div>
+      <div id="sheetOn" hidden>
+        <p class="hint" id="sheetStatus"></p>
+        <div class="newcat"><a class="ghost" id="sheetLink" target="_blank" rel="noopener">Open Google Sheet ↗</a><button type="button" class="ghost" id="sheetSync">Sync now</button><button type="button" class="ghost danger" id="sheetOff">Stop syncing</button></div>
+      </div>
     </div>
     <div class="settings" id="designLockRow" hidden>
       <span class="label">Design is finalised and locked.</span>
@@ -1257,6 +1271,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   // ----- admin: keep each linked person's own copy in step with the register -----
   const uidOf = (memberId) => { const m = memberById(memberId); return m && m.uid ? m.uid : null; };
   async function syncMirrors(entry, prev) {
+    scheduleSheetSync();
     const keep = new Set();
     if (entry) [entry.by, isTransfer(entry) ? entry.to : null].map(uidOf).filter(Boolean).forEach((u) => keep.add(u));
     for (const u of keep) await state.db.doc(`people/${u}/entries/${entry.id}`).set(entryFields(entry));
@@ -1284,6 +1299,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     await state.db.doc(path).set(body); publicCache[path] = json;
   }
   function syncPublic() {
+    if (state.sheet && state.sheet.lastSync) scheduleSheetSync();
     const ms = state.members.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     queue(async () => {
       await setIfChanged("directory/main", { members: ms.map((m) => ({ id: m.id, name: m.name, color: m.color || 0, order: m.order || 0, archived: !!m.archived, linked: !!m.uid })) });
@@ -1665,7 +1681,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   $("selReset").onclick = () => { if (state.sel) { delete state.draft.sizes[state.sel]; touchDraft(); } };
   document.querySelectorAll("#themePick button").forEach((b) => { b.onclick = () => { state.editTheme = b.dataset.theme; document.documentElement.setAttribute("data-theme", b.dataset.theme); renderDesignControls(); }; });
 
-  // ---------- backup to Excel ----------
+  // ---------- backup: Excel download and live Google Sheet ----------
   const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
   function loadXlsx() {
     if (window.XLSX) return Promise.resolve();
@@ -1689,6 +1705,32 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     }
     return out.filter((e) => typeof e.amount === "number");
   }
+  // the same three tables feed the Excel file and the Google Sheet
+  async function backupTables() {
+    const entries = (await allEntriesForBackup()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.createdAt || 0) - (b.createdAt || 0)));
+    const nm = (id) => (memberById(id) || {}).name || "";
+    const kind = (e) => (isIncome(e) ? "Income" : isTransfer(e) ? "Transfer" : "Expense");
+    const owner = state.role === "owner";
+    const tables = [{
+      name: "Entries", money: [4, 5],
+      cols: ["Date", "Type", "Category", "Note", "Amount", "Money in / out", owner ? "Paid / received by" : "Person", "Transfer to", "Status"],
+      rows: entries.map((e) => [e.date, kind(e), alias(e.category), e.note || "", e.amount, isIncome(e) ? e.amount : isTransfer(e) ? 0 : -e.amount,
+        nm(e.by), isTransfer(e) ? nm(e.to) : "", e.pending ? "Waiting for admin" : "Saved"]),
+    }];
+    const months = {};
+    entries.forEach((e) => {
+      const m = (months[ymOf(e.date)] = months[ymOf(e.date)] || [ymOf(e.date), 0, 0, 0, 0]);
+      if (isIncome(e)) m[1] += e.amount; else if (isExpense(e)) m[2] += e.amount;
+      m[3] = Math.round((m[1] - m[2]) * 100) / 100; m[4]++;
+    });
+    tables.push({ name: "Monthly summary", money: [1, 2, 3], cols: ["Month", "Income", "Spent", "Balance", "Entries"], rows: Object.values(months).sort((a, b) => (a[0] < b[0] ? -1 : 1)) });
+    if (owner) tables.push({
+      name: "Family", money: [4], cols: ["Name", "Admin", "Login ID", "Logged in", "Opening balance", "Opening date", "Removed"],
+      rows: state.members.map((m) => { const o = opening(m); return [m.name, adminMember() && adminMember().id === m.id ? "Yes" : "", m.loginId || "", m.uid ? "Yes" : "", o.amount, o.date, m.archived ? "Yes" : ""]; }),
+    });
+    return { tables, count: entries.length };
+  }
+
   async function downloadBackup(btn) {
     const label = btn.textContent;
     btn.disabled = true; btn.textContent = "Preparing…";
@@ -1696,44 +1738,19 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const downloads = await claude.use("downloads");
       if (!downloads) { toast("Downloads aren't available here. Open the app in a browser or the Claude app."); return; }
       await loadXlsx();
-      const entries = (await allEntriesForBackup()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.createdAt || 0) - (b.createdAt || 0)));
-      const nm = (id) => (memberById(id) || {}).name || "";
-      const kind = (e) => (isIncome(e) ? "Income" : isTransfer(e) ? "Transfer" : "Expense");
-      const rows = entries.map((e) => ({
-        Date: e.date, Type: kind(e), Category: alias(e.category), Note: e.note || "",
-        Amount: e.amount, "Money in / out": isIncome(e) ? e.amount : isTransfer(e) ? 0 : -e.amount,
-        [state.role === "owner" ? "Paid / received by" : "Person"]: nm(e.by),
-        "Transfer to": isTransfer(e) ? nm(e.to) : "",
-        Status: e.pending ? "Waiting for admin" : "Saved",
-      }));
-      const months = {};
-      entries.forEach((e) => {
-        const m = (months[ymOf(e.date)] = months[ymOf(e.date)] || { Month: ymOf(e.date), Income: 0, Spent: 0, Balance: 0, Entries: 0 });
-        if (isIncome(e)) m.Income += e.amount; else if (isExpense(e)) m.Spent += e.amount;
-        m.Balance = m.Income - m.Spent; m.Entries++;
-      });
+      const { tables, count } = await backupTables();
       const X = window.XLSX, wb = X.utils.book_new();
-      const sheet = (data, cols, money) => {
-        const ws = X.utils.json_to_sheet(data.length ? data : [{}], { header: cols });
-        ws["!cols"] = cols.map((c) => ({ wch: Math.max(10, c.length + 2, ...data.slice(0, 500).map((r) => String(r[c] ?? "").length + 1)) }));
-        const range = X.utils.decode_range(ws["!ref"]);
-        for (let r = 1; r <= range.e.r; r++) money.forEach((c) => { const cell = ws[X.utils.encode_cell({ r, c: cols.indexOf(c) })]; if (cell && cell.t === "n") cell.z = "#,##0.00"; });
-        return ws;
-      };
-      const eCols = Object.keys(rows[0] || { Date: 0, Type: 0, Category: 0, Note: 0, Amount: 0, "Money in / out": 0, "Paid / received by": 0, "Transfer to": 0, Status: 0 });
-      X.utils.book_append_sheet(wb, sheet(rows, eCols, ["Amount", "Money in / out"]), "Entries");
-      X.utils.book_append_sheet(wb, sheet(Object.values(months).sort((a, b) => (a.Month < b.Month ? -1 : 1)), ["Month", "Income", "Spent", "Balance", "Entries"], ["Income", "Spent", "Balance"]), "Monthly summary");
-      if (state.role === "owner") {
-        const fam = state.members.map((m) => { const o = opening(m); return {
-          Name: m.name, Admin: adminMember() && adminMember().id === m.id ? "Yes" : "", "Login ID": m.loginId || "", "Logged in": m.uid ? "Yes" : "",
-          "Opening balance": o.amount, "Opening date": o.date, Removed: m.archived ? "Yes" : "" }; });
-        X.utils.book_append_sheet(wb, sheet(fam, ["Name", "Admin", "Login ID", "Logged in", "Opening balance", "Opening date", "Removed"], ["Opening balance"]), "Family");
-      }
+      tables.forEach((t) => {
+        const ws = X.utils.aoa_to_sheet([t.cols, ...t.rows]);
+        ws["!cols"] = t.cols.map((c, i) => ({ wch: Math.max(10, c.length + 2, ...t.rows.slice(0, 500).map((r) => String(r[i] ?? "").length + 1)) }));
+        t.rows.forEach((r, ri) => t.money.forEach((ci) => { const cell = ws[X.utils.encode_cell({ r: ri + 1, c: ci })]; if (cell && cell.t === "n") cell.z = "#,##0.00"; }));
+        X.utils.book_append_sheet(wb, ws, t.name);
+      });
       wb.Props = { Title: "Family register backup", CreatedDate: new Date() };
       const buf = X.write(wb, { bookType: "xlsx", type: "array" });
       const who = state.role === "owner" ? "family" : (String((state.members[0] || {}).name || "my").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "my");
       const res = await downloads.save({ filename: `${who}-register-backup-${todayIso()}.xlsx`, data: buf });
-      if (res && res.status === "saved") toast(`Backup saved: ${rows.length} ${rows.length === 1 ? "entry" : "entries"}`);
+      if (res && res.status === "saved") toast(`Backup saved: ${count} ${count === 1 ? "entry" : "entries"}`);
     } catch (e) {
       const code = e && e.code;
       toast(code === "declined" ? "Download cancelled" : code === "rate_limited" ? "A download is already waiting for you to confirm" : e && e.message === "load" ? "Couldn't load the Excel maker. Check your connection and try again." : "Couldn't make the backup. Try again.");
@@ -1741,6 +1758,85 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   }
   $("backupBtn").onclick = () => downloadBackup($("backupBtn"));
   $("backupMe").onclick = () => downloadBackup($("backupMe"));
+
+  // ----- live Google Sheet (admin only): rewritten after every change while the admin has the app open -----
+  const GS = "Google Sheets";
+  state.sheet = null; // {spreadsheetId, url, lastSync, lastError}
+  const sheetIdFrom = (s) => { const m = String(s || "").match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/) || String(s || "").trim().match(/^([a-zA-Z0-9_-]{30,})$/); return m ? m[1] : null; };
+  const payloadOf = (r) => { if (r && r.payload !== undefined) return r.payload; try { return JSON.parse(r.content.find((c) => c.type === "text").text); } catch (e) { return null; } };
+  const q = (t) => `'${t.replace(/'/g, "''")}'`;
+  function sheetErrText(e) {
+    const c = e && e.code;
+    if (c === "needs_reauth") return "Google Sheets needs reconnecting: claude.ai Settings → Connectors.";
+    if (c === "server_not_connected" || c === "selection_required") return "Connect Google Sheets in claude.ai Settings → Connectors.";
+    if (c === "not_in_manifest" || c === "approval_required") return "Allow Google Sheets for this app, then tap Sync now.";
+    if (c === "tool_error") return "Google couldn't write to that sheet. Check the link, and that your Google account can edit it.";
+    if (c === "server_unavailable") return "Google Sheets didn't answer. It will try again on the next change.";
+    return "Sync didn't finish. Tap Sync now to try again.";
+  }
+  let syncTimer = null, syncing = false, syncAgain = false;
+  function scheduleSheetSync(delay = 4000) {
+    if (state.role !== "owner" || !state.sheet || !state.sheet.spreadsheetId) return;
+    clearTimeout(syncTimer); syncTimer = setTimeout(syncSheet, delay);
+  }
+  async function syncSheet() {
+    if (state.role !== "owner" || !state.sheet || !state.sheet.spreadsheetId) return;
+    if (syncing) { syncAgain = true; return; }
+    syncing = true; renderSheet("Syncing…");
+    const id = state.sheet.spreadsheetId;
+    try {
+      const mcp = await claude.use("mcp");
+      if (!mcp) throw { code: "capability_disabled" };
+      const call = async (tool, input) => payloadOf(await mcp.callTool(GS, tool, input, { cache: false }));
+      const { tables, count } = await backupTables();
+      const meta = await call("get_spreadsheet", { spreadsheetId: id, fields: ["sheets.properties.sheetId", "sheets.properties.title"] });
+      const have = new Set(((meta && meta.sheets) || []).map((s) => s.properties.title));
+      const missing = tables.filter((t) => !have.has(t.name));
+      if (missing.length) {
+        await call("update_spreadsheet", { spreadsheetId: id, requests: missing.map((t) => ({ addSheet: { properties: { title: t.name } } })) });
+        const meta2 = await call("get_spreadsheet", { spreadsheetId: id, fields: ["sheets.properties.sheetId", "sheets.properties.title"] });
+        const ids = Object.fromEntries(((meta2 && meta2.sheets) || []).map((s) => [s.properties.title, s.properties.sheetId]));
+        const fmt = [];
+        missing.forEach((t) => { const sid = ids[t.name]; if (sid == null) return;
+          fmt.push({ updateSheetProperties: { properties: { sheetId: sid, gridProperties: { frozenRowCount: 1 } }, fields: "gridProperties.frozenRowCount" } });
+          fmt.push({ repeatCell: { range: { sheetId: sid, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true } } }, fields: "userEnteredFormat.textFormat.bold" } }); });
+        if (fmt.length) await call("update_spreadsheet", { spreadsheetId: id, requests: fmt });
+      }
+      await call("batch_clear_values", { spreadsheetId: id, ranges: tables.map((t) => `${q(t.name)}!A:Z`) });
+      for (const t of tables) await call("update_values", { spreadsheetId: id, range: `${q(t.name)}!A1`, values: [t.cols, ...t.rows.map((r) => r.map((v) => (v == null ? "" : v)))] });
+      state.sheet = { ...state.sheet, lastSync: Date.now(), lastError: null, rows: count };
+      await state.db.doc("backup/sheet").set(state.sheet).catch(() => {});
+    } catch (e) {
+      state.sheet = { ...state.sheet, lastError: sheetErrText(e) };
+    } finally {
+      syncing = false; renderSheet();
+      if (syncAgain) { syncAgain = false; scheduleSheetSync(1500); }
+    }
+  }
+  function renderSheet(busy) {
+    const s = state.sheet, on = !!(s && s.spreadsheetId);
+    $("sheetSetup").hidden = on; $("sheetOn").hidden = !on;
+    if (!on) return;
+    $("sheetLink").href = s.url || `https://docs.google.com/spreadsheets/d/${s.spreadsheetId}/edit`;
+    const t = s.lastSync ? new Date(s.lastSync).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : null;
+    $("sheetStatus").textContent = busy || (s.lastError ? s.lastError : t ? `Up to date · last synced ${t}` : "Not synced yet");
+    $("sheetStatus").className = "hint" + (s.lastError && !busy ? " err" : "");
+    $("sheetSync").disabled = !!busy;
+  }
+  $("sheetConnect").onclick = async () => {
+    const id = sheetIdFrom($("sheetUrl").value);
+    if (!id) { toast("Paste the full link of your Google Sheet"); $("sheetUrl").focus(); return; }
+    state.sheet = { spreadsheetId: id, url: `https://docs.google.com/spreadsheets/d/${id}/edit`, lastSync: null, lastError: null };
+    try { await state.db.doc("backup/sheet").set(state.sheet); } catch (e) { toast(errText(e)); return; }
+    $("sheetUrl").value = ""; renderSheet(); syncSheet();
+  };
+  $("sheetSync").onclick = () => { clearTimeout(syncTimer); syncSheet(); };
+  $("sheetOff").onclick = async () => {
+    if ($("sheetOff").dataset.armed !== "1") { $("sheetOff").dataset.armed = "1"; $("sheetOff").textContent = "Tap again to stop syncing"; return; }
+    $("sheetOff").dataset.armed = ""; $("sheetOff").textContent = "Stop syncing";
+    try { await state.db.doc("backup/sheet").delete(); state.sheet = null; renderSheet(); toast("Stopped. Your Google Sheet keeps what it already has."); } catch (e) { toast(errText(e)); }
+  };
+
 
   $("date").value = todayIso();
   applyDesign();
@@ -1796,6 +1892,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       return;
     }
 
+    db.doc("backup/sheet").get().then((s) => { state.sheet = s.exists ? s.data() : null; renderSheet(); scheduleSheetSync(3000); }).catch(() => {});
     db.doc("designDraft/main").get().then((s) => { if (s.exists) state.savedDraft = s.data(); }).catch(() => {});
     renderDesignControls();
     db.collection("members").onSnapshot((snap) => {
