@@ -223,6 +223,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .cdel { margin-left: 2px; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 14px; line-height: 1; background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); cursor: pointer; }
 .chip-gone .cdel { background: color-mix(in srgb, var(--pos) 18%, transparent); color: var(--pos); }
 .ghost.danger { color: var(--danger); }
+.btn.backup { background: var(--forest); color: var(--on-forest); }
+.btn.backup:hover:not(:disabled) { background: color-mix(in srgb, var(--forest) 85%, #fff); }
 .customize { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20; border: 0; border-radius: 999px; padding: 12px 18px; font-weight: 700; background: var(--forest); color: var(--on-forest); box-shadow: 0 6px 20px rgba(0,0,0,.2); }
 .designing body { padding-bottom: 62vh; }
 .designing [data-edit], .designing #cats .chip:not(.addchip) .ctext { outline: 1.5px dashed color-mix(in srgb, var(--ink) 45%, transparent); outline-offset: 3px; border-radius: 4px; cursor: text; }
@@ -288,7 +290,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <div class="chips" id="filter" aria-label="Show"></div>
   </section>
 
-  <div class="rolenote" id="roleNote" hidden><span id="roleText"></span><button type="button" class="ghost" id="logoutBtn">Log out</button></div>
+  <div class="rolenote" id="roleNote" hidden><span id="roleText"></span><span><button type="button" class="ghost" id="backupMe">⬇ Download my entries</button><button type="button" class="ghost" id="logoutBtn">Log out</button></span></div>
 
   <section class="card logincard" id="loginCard" hidden aria-label="Log in">
     <h2 data-edit="title-log-in">Log in</h2>
@@ -416,6 +418,10 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
         <option value="SGD">S$ SGD</option>
         <option value="JPY">¥ JPY</option>
       </select>
+    </div>
+    <div class="settings">
+      <button type="button" class="btn backup" id="backupBtn">⬇ Download backup (Excel)</button>
+      <span class="hint">All entries, monthly totals and the family list in one file.</span>
     </div>
     <div class="settings" id="designLockRow" hidden>
       <span class="label">Design is finalised and locked.</span>
@@ -1650,6 +1656,83 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   $("selUp").onclick = () => bump(10);
   $("selReset").onclick = () => { if (state.sel) { delete state.draft.sizes[state.sel]; touchDraft(); } };
   document.querySelectorAll("#themePick button").forEach((b) => { b.onclick = () => { state.editTheme = b.dataset.theme; document.documentElement.setAttribute("data-theme", b.dataset.theme); renderDesignControls(); }; });
+
+  // ---------- backup to Excel ----------
+  const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+  function loadXlsx() {
+    if (window.XLSX) return Promise.resolve();
+    return new Promise((res, rej) => {
+      const sc = document.createElement("script"); sc.src = XLSX_URL;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("load"));
+      document.head.appendChild(sc);
+    });
+  }
+  async function allEntriesForBackup() {
+    if (state.role !== "owner") return state.all.slice();
+    const col = state.db.collection("expenses");
+    const [first, last] = await Promise.all([col.orderBy("date", "asc").limit(1).get(), col.orderBy("date", "desc").limit(1).get()]);
+    if (first.empty) return [];
+    const from = ymOf(first.docs[0].data().date), to = ymOf(last.docs[0].data().date);
+    const out = [];
+    for (const ym of monthsBetween(from, to).concat(to)) {
+      const [y, mo] = ym.split("-").map(Number);
+      const snap = await col.where("date", ">=", ym + "-01").where("date", "<=", `${ym}-${pad(new Date(y, mo, 0).getDate())}`).limit(1000).get();
+      snap.docs.forEach((d) => out.push(toEntry(d)));
+    }
+    return out.filter((e) => typeof e.amount === "number");
+  }
+  async function downloadBackup(btn) {
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Preparing…";
+    try {
+      const downloads = await claude.use("downloads");
+      if (!downloads) { toast("Downloads aren't available here. Open the app in a browser or the Claude app."); return; }
+      await loadXlsx();
+      const entries = (await allEntriesForBackup()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.createdAt || 0) - (b.createdAt || 0)));
+      const nm = (id) => (memberById(id) || {}).name || "";
+      const kind = (e) => (isIncome(e) ? "Income" : isTransfer(e) ? "Transfer" : "Expense");
+      const rows = entries.map((e) => ({
+        Date: e.date, Type: kind(e), Category: alias(e.category), Note: e.note || "",
+        Amount: e.amount, "Money in / out": isIncome(e) ? e.amount : isTransfer(e) ? 0 : -e.amount,
+        [state.role === "owner" ? "Paid / received by" : "Person"]: nm(e.by),
+        "Transfer to": isTransfer(e) ? nm(e.to) : "",
+        Status: e.pending ? "Waiting for admin" : "Saved",
+      }));
+      const months = {};
+      entries.forEach((e) => {
+        const m = (months[ymOf(e.date)] = months[ymOf(e.date)] || { Month: ymOf(e.date), Income: 0, Spent: 0, Balance: 0, Entries: 0 });
+        if (isIncome(e)) m.Income += e.amount; else if (isExpense(e)) m.Spent += e.amount;
+        m.Balance = m.Income - m.Spent; m.Entries++;
+      });
+      const X = window.XLSX, wb = X.utils.book_new();
+      const sheet = (data, cols, money) => {
+        const ws = X.utils.json_to_sheet(data.length ? data : [{}], { header: cols });
+        ws["!cols"] = cols.map((c) => ({ wch: Math.max(10, c.length + 2, ...data.slice(0, 500).map((r) => String(r[c] ?? "").length + 1)) }));
+        const range = X.utils.decode_range(ws["!ref"]);
+        for (let r = 1; r <= range.e.r; r++) money.forEach((c) => { const cell = ws[X.utils.encode_cell({ r, c: cols.indexOf(c) })]; if (cell && cell.t === "n") cell.z = "#,##0.00"; });
+        return ws;
+      };
+      const eCols = Object.keys(rows[0] || { Date: 0, Type: 0, Category: 0, Note: 0, Amount: 0, "Money in / out": 0, "Paid / received by": 0, "Transfer to": 0, Status: 0 });
+      X.utils.book_append_sheet(wb, sheet(rows, eCols, ["Amount", "Money in / out"]), "Entries");
+      X.utils.book_append_sheet(wb, sheet(Object.values(months).sort((a, b) => (a.Month < b.Month ? -1 : 1)), ["Month", "Income", "Spent", "Balance", "Entries"], ["Income", "Spent", "Balance"]), "Monthly summary");
+      if (state.role === "owner") {
+        const fam = state.members.map((m) => { const o = opening(m); return {
+          Name: m.name, Admin: adminMember() && adminMember().id === m.id ? "Yes" : "", "Login ID": m.loginId || "", "Logged in": m.uid ? "Yes" : "",
+          "Opening balance": o.amount, "Opening date": o.date, Removed: m.archived ? "Yes" : "" }; });
+        X.utils.book_append_sheet(wb, sheet(fam, ["Name", "Admin", "Login ID", "Logged in", "Opening balance", "Opening date", "Removed"], ["Opening balance"]), "Family");
+      }
+      wb.Props = { Title: "Family register backup", CreatedDate: new Date() };
+      const buf = X.write(wb, { bookType: "xlsx", type: "array" });
+      const who = state.role === "owner" ? "family" : (String((state.members[0] || {}).name || "my").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "my");
+      const res = await downloads.save({ filename: `${who}-register-backup-${todayIso()}.xlsx`, data: buf });
+      if (res && res.status === "saved") toast(`Backup saved: ${rows.length} ${rows.length === 1 ? "entry" : "entries"}`);
+    } catch (e) {
+      const code = e && e.code;
+      toast(code === "declined" ? "Download cancelled" : code === "rate_limited" ? "A download is already waiting for you to confirm" : e && e.message === "load" ? "Couldn't load the Excel maker. Check your connection and try again." : "Couldn't make the backup. Try again.");
+    } finally { btn.disabled = false; btn.textContent = label; }
+  }
+  $("backupBtn").onclick = () => downloadBackup($("backupBtn"));
+  $("backupMe").onclick = () => downloadBackup($("backupMe"));
 
   $("date").value = todayIso();
   applyDesign();
