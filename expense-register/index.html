@@ -217,6 +217,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .newcat { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .newcat .field { flex: 1 1 160px; }
 .newcat .iconin { flex: 0 0 64px; text-align: center; font-size: 18px; }
+:root:not(.designing) .design-hidden { display: none !important; }
+.designing .design-hidden, .designing .chip-gone { opacity: .35; }
+.designing .design-hidden:hover { opacity: .6; }
+.cdel { margin-left: 2px; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 14px; line-height: 1; background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); cursor: pointer; }
+.chip-gone .cdel { background: color-mix(in srgb, var(--pos) 18%, transparent); color: var(--pos); }
+.ghost.danger { color: var(--danger); }
 .customize { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20; border: 0; border-radius: 999px; padding: 12px 18px; font-weight: 700; background: var(--forest); color: var(--on-forest); box-shadow: 0 6px 20px rgba(0,0,0,.2); }
 .designing body { padding-bottom: 62vh; }
 .designing [data-edit], .designing #cats .chip:not(.addchip) .ctext { outline: 1.5px dashed color-mix(in srgb, var(--ink) 45%, transparent); outline-offset: 3px; border-radius: 4px; cursor: text; }
@@ -421,10 +427,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <b>Customize</b>
     <div class="db-actions"><button type="button" class="ghost" id="designCancel">Close</button><button type="button" class="btn" id="designFinal">Finalise</button></div>
   </div>
-  <p class="hint">Tap any outlined text to rename it, including categories. Your changes are a draft only you see until you tap Finalise.</p>
+  <p class="hint">Tap any outlined text to rename it, including categories. Tap × on a category to delete it. To delete a section, tap its title and choose Delete. Your changes are a draft only you see until you tap Finalise.</p>
   <div class="db-sec">
     <span class="label">Selected item</span>
-    <div class="db-row"><span id="selName" class="db-sel"></span><button type="button" class="iconbtn" id="selDown" aria-label="Smaller">−</button><span id="selSize" class="num"></span><button type="button" class="iconbtn" id="selUp" aria-label="Bigger">+</button><button type="button" class="ghost" id="selReset">Reset</button></div>
+    <div class="db-row"><span id="selName" class="db-sel"></span><button type="button" class="iconbtn" id="selDown" aria-label="Smaller">−</button><span id="selSize" class="num"></span><button type="button" class="iconbtn" id="selUp" aria-label="Bigger">+</button><button type="button" class="ghost" id="selReset">Reset size</button><button type="button" class="ghost danger" id="selDel">Delete</button></div>
+    <p class="hint" id="hiddenCount"></p>
   </div>
   <div class="db-sec">
     <div class="db-row"><span class="label">Colours for</span><div class="seg" id="themePick"><button type="button" data-theme="light">Light mode</button><button type="button" data-theme="dark">Dark mode</button></div></div>
@@ -454,7 +461,9 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   const custom = { shared: { expense: [], income: [] }, mine: { expense: [], income: [] } };
   const customList = (kind) => [...custom.shared[kind], ...custom.mine[kind]];
   const allCats = (kind) => { const base = kind === "income" ? SOURCES : CATS; const out = base.slice();
-    customList(kind).forEach((c) => { if (!out.includes(c.name)) out.splice(out.length - 1, 0, c.name); }); return out; };
+    customList(kind).forEach((c) => { if (!out.includes(c.name)) out.splice(out.length - 1, 0, c.name); });
+    return state.designing ? out : out.filter((c) => !catHidden(c)); };
+  const catHidden = (c) => cur().hiddenCats.includes(c);
   const iconFor = (c) => ICON[c] || ((customList("expense").concat(customList("income")).find((x) => x.name === c) || {}).icon) || "🏷️";
   const TONES = ["--bubble", "--tangerine", "--sky", "--sun", "--mint", "--grape", "--coral", "--lime"];
   const catTone = (c) => { const i = [...CATS, ...SOURCES, ...TRANSFER_TYPES].indexOf(c); return `var(${TONES[Math.max(0, i) % TONES.length]})`; };
@@ -561,6 +570,10 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     if (!state.editingId) setDyn("save", "button-save-" + state.kind, tr ? "Record transfer" : inc ? "Add income" : "Add expense");
     const cats = $("cats"); cats.replaceChildren();
     const opts = tr ? TRANSFER_TYPES.slice() : allCats(inc ? "income" : "expense");
+    if (!state.designing && !tr) {
+      if (inc && catHidden(state.src) && opts.length) state.src = opts[0];
+      if (!inc && catHidden(state.cat) && opts.length) state.cat = opts[0];
+    }
     const cur = tr ? state.ttype : inc ? state.src : state.cat;
     if (!opts.includes(cur)) opts.push(cur);
     $("form").dataset.kind = state.kind;
@@ -568,6 +581,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const b = el("button", "chip"); b.type = "button";
       const ic = el("span", null, iconFor(c)); ic.setAttribute("aria-hidden", "true");
       b.append(ic, el("span", "ctext", alias(c))); b.dataset.cat = c;
+      if (state.designing && !tr) {
+        const gone = catHidden(c);
+        if (gone) b.classList.add("chip-gone");
+        const x = el("span", "cdel", gone ? "↺" : "×"); x.title = gone ? "Bring back" : "Delete category"; b.append(x);
+      }
       b.style.setProperty("--c", catTone(c));
       b.setAttribute("aria-pressed", String(cur === c));
       b.onclick = () => { if (tr) state.ttype = c; else if (inc) state.src = c; else state.cat = c; renderChips(); };
@@ -1403,7 +1421,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     ["Mono", { "--forest": "#111111", "--lime": "#e6e6e6", "--pos": "#2f6b10", "--panel": "#f3f3f3" }, { "--forest": "#000000", "--lime": "#e6e6e6", "--pos": "#b6e39b", "--bg": "#0d0d0d", "--panel": "#181818", "--surface": "#242424" }],
   ];
   const SLIDERS = [["scale", "Overall size", 80, 130, 100, "%"], ["num", "Big numbers", 60, 150, 100, "%"], ["radius", "Roundness", 0, 40, 24, "px"], ["width", "Page width", 480, 1100, 680, "px"], ["gap", "Spacing", 8, 44, 20, "px"]];
-  const blankDesign = () => ({ texts: {}, aliases: {}, sizes: {}, colors: { light: {}, dark: {} }, scale: 100, num: 100, radius: 24, width: 680, gap: 20, locked: false });
+  const blankDesign = () => ({ texts: {}, aliases: {}, sizes: {}, hidden: {}, hiddenCats: [], colors: { light: {}, dark: {} }, scale: 100, num: 100, radius: 24, width: 680, gap: 20, locked: false });
   const cleanDesign = (d) => {
     const b = blankDesign(); d = d || {};
     const obj = (o) => (o && typeof o === "object" && !Array.isArray(o) ? o : {});
@@ -1413,6 +1431,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     b.texts = strs(d.texts); b.aliases = strs(d.aliases);
     b.sizes = Object.fromEntries(Object.entries(obj(d.sizes)).filter(([, v]) => Number.isFinite(v) && v >= 50 && v <= 250));
     b.colors = { light: hexes(obj(d.colors).light), dark: hexes(obj(d.colors).dark) };
+    b.hidden = Object.fromEntries(Object.entries(obj(d.hidden)).filter(([, v]) => v === true));
+    b.hiddenCats = (Array.isArray(d.hiddenCats) ? d.hiddenCats : []).filter((c) => typeof c === "string").slice(0, 100);
     b.locked = !!d.locked;
     return b;
   };
@@ -1445,6 +1465,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 #amount { font-size: calc(42px * ${d.num / 100}); }
 .hero { border-radius: calc(var(--r) + 4px); }
 `;
+    document.querySelectorAll(".design-hidden").forEach((e) => e.classList.remove("design-hidden"));
+    Object.keys(d.hidden).forEach((k) => { const t = hideTarget(k); if (t) t.classList.add("design-hidden"); });
     Object.entries(d.sizes).forEach(([k, v]) => { css += `[data-edit="${CSS.escape(k)}"] { zoom: ${v / 100}; }\n`; });
     let tag = document.getElementById("designStyle");
     if (!tag) { tag = document.createElement("style"); tag.id = "designStyle"; document.head.appendChild(tag); }
@@ -1491,6 +1513,12 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     $("selName").textContent = state.sel ? `“${(document.querySelector(`[data-edit="${CSS.escape(state.sel)}"]`) || {}).textContent || state.sel}”` : "Tap an item to resize it";
     $("selSize").textContent = state.sel ? (d.sizes[state.sel] || 100) + "%" : "";
     ["selDown", "selUp", "selReset"].forEach((id) => { $(id).disabled = !state.sel; });
+    const hid = state.sel && d.hidden[state.sel];
+    $("selDel").disabled = !state.sel || PROTECTED(state.sel);
+    $("selDel").textContent = hid ? "Bring back" : "Delete";
+    $("selDel").classList.toggle("danger", !hid);
+    const nHidden = Object.keys(d.hidden).length + d.hiddenCats.length;
+    $("hiddenCount").textContent = nHidden ? `${nHidden} deleted item${nHidden > 1 ? "s" : ""} shown faded. Tap one and choose Bring back.` : "";
     document.querySelectorAll("#themePick button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === state.editTheme)));
     const grid = $("colorGrid");
     if (!grid.children.length) {
@@ -1520,6 +1548,15 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     SLIDERS.forEach(([k, , , , , unit]) => { const i = $("sl-" + k); if (document.activeElement !== i) i.value = d[k]; $("slv-" + k).textContent = d[k] + unit; });
   }
 
+  // what "Delete" removes: a section title takes its whole card, a stat label takes its box
+  const PROTECTED = (k) => /^button-save|^title-log-in$|^hint-login$|^col-/.test(k);
+  function hideTarget(k) {
+    const e = document.querySelector(`[data-edit="${CSS.escape(k)}"]`);
+    if (!e) return null;
+    if (e.tagName === "H2") return e.closest(".card, .hero") || e;
+    if (e.closest(".stats") && e.parentElement.closest(".stats")) return e.parentElement;
+    return e;
+  }
   function select(key) {
     state.sel = key;
     document.querySelectorAll(".design-sel").forEach((e) => e.classList.remove("design-sel"));
@@ -1537,6 +1574,13 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   document.addEventListener("click", (ev) => {
     if (!state.designing) return;
     if (ev.target.closest("#designBar")) return;
+    const del = ev.target.closest("#cats .cdel");
+    if (del) {
+      ev.preventDefault(); ev.stopPropagation();
+      const c = del.closest(".chip").dataset.cat, list = state.draft.hiddenCats;
+      state.draft.hiddenCats = list.includes(c) ? list.filter((x) => x !== c) : list.concat(c);
+      touchDraft(); return;
+    }
     const chip = ev.target.closest("#cats .chip:not(.addchip)");
     if (chip) {
       ev.preventDefault(); ev.stopPropagation();
@@ -1574,6 +1618,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     state.draft = blankDesign(); state.sel = null; touchDraft();
   };
   const bump = (n) => { if (!state.sel) return; const v = Math.min(250, Math.max(50, (state.draft.sizes[state.sel] || 100) + n)); if (v === 100) delete state.draft.sizes[state.sel]; else state.draft.sizes[state.sel] = v; touchDraft(); };
+  $("selDel").onclick = () => {
+    const k = state.sel; if (!k || PROTECTED(k)) return;
+    if (state.draft.hidden[k]) delete state.draft.hidden[k]; else state.draft.hidden[k] = true;
+    touchDraft();
+  };
   $("selDown").onclick = () => bump(-10);
   $("selUp").onclick = () => bump(10);
   $("selReset").onclick = () => { if (state.sel) { delete state.draft.sizes[state.sel]; touchDraft(); } };
