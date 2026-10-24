@@ -619,7 +619,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     // income is always received by the admin (an edited old entry keeps its original person)
     const adm = state.role === "owner" && inc ? adminMember() : null;
     const editingBy = state.editingId && (state.expenses.find((e) => e.id === state.editingId) || {}).by;
-    const payerList = adm ? ms.filter((m) => m.id === adm.id || m.id === editingBy) : ms;
+    const payerList = adm && !state.incomeOthers ? ms.filter((m) => m.id === adm.id || m.id === editingBy) : ms;
     if (adm && !payerList.some((m) => m.id === state.payer)) state.payer = adm.id;
     if (ms.length && !ms.some((m) => m.id === state.payer)) state.payer = ms[0].id;
     payerList.forEach((m) => {
@@ -630,6 +630,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       b.onclick = () => { state.payer = m.id; try { localStorage.setItem(lastPayerKey, m.id); } catch (e) {} renderChips(); };
       payers.append(b);
     });
+    if (adm && !state.incomeOthers && ms.length > payerList.length) {
+      const more = el("button", "chip addchip", "+ For someone else"); more.type = "button";
+      more.onclick = () => { state.incomeOthers = true; renderChips(); };
+      payers.append(more);
+    }
     $("payerHint").hidden = ms.length > 0;
 
     $("toGroup").hidden = !tr;
@@ -767,6 +772,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     if (isTransfer(e)) d.append(el("b", null, e.note || `${cn} to ${nm(toM)}`), el("span", null, `${nm(m)} → ${nm(toM)} · ${cn}`));
     else d.append(el("b", null, e.note || cn), el("span", null, e.note ? `${cn} · ${nm(m)}` : nm(m)));
     if (e.pending) { const pl = el("span", "pill", "Waiting for admin"); d.querySelector("span").prepend(pl); }
+    else if (state.role === "member" && e.addedByAdmin) { const pl = el("span", "pill", "Added by admin"); d.querySelector("span").prepend(pl); }
     if (admin) {
       d.onclick = () => startEdit(e);
       d.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); startEdit(e); } };
@@ -1063,9 +1069,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     state.editingId = null;
     $("amount").value = ""; $("note").value = ""; $("date").value = todayIso();
     $("cancelEdit").hidden = true; $("formErr").hidden = true;
+    state.incomeOthers = false;
+    if (state.kind === "income" && state.role === "owner" && adminMember()) state.payer = adminMember().id;
     renderChips(); renderLedger();
   }
-  function setKind(k) { if (state.editingId || state.kind === k) return; state.kind = k; renderChips(); }
+  function setKind(k) { if (state.editingId || state.kind === k) return; state.kind = k; state.incomeOthers = false; renderChips(); }
   $("kindExp").onclick = () => setKind("expense");
   $("kindInc").onclick = () => setKind("income");
   $("kindTr").onclick = () => setKind("transfer");
@@ -1141,6 +1149,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     };
     // custom categories carry their icon so everyone sees it, not just the person who made the category
     if (!tr && !ICON[body.category]) body.icon = iconFor(body.category);
+    if (state.role === "owner") body.addedByAdmin = true;
     $("save").disabled = true;
     try {
       if (state.role === "member") {
@@ -1244,7 +1253,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       }, () => { state.loaded = true; renderAll(); });
   }
   function toEntry(d) { const e = { id: d.id, ...d.data() }; if (RENAMED[e.category]) e.category = RENAMED[e.category]; return e; }
-  const entryFields = (e) => ({ type: e.type || "expense", amount: e.amount, date: e.date, category: String(e.category || "Other").slice(0, 30), note: String(e.note || "").slice(0, 80), icon: e.icon ? String(e.icon).slice(0, 8) : null, by: e.by || null, to: e.to || null, createdAt: e.createdAt || Date.now() });
+  const entryFields = (e) => ({ type: e.type || "expense", amount: e.amount, date: e.date, category: String(e.category || "Other").slice(0, 30), note: String(e.note || "").slice(0, 80), icon: e.icon ? String(e.icon).slice(0, 8) : null, addedByAdmin: !!e.addedByAdmin, by: e.by || null, to: e.to || null, createdAt: e.createdAt || Date.now() });
 
   // ----- admin: keep each linked person's own copy in step with the register -----
   const uidOf = (memberId) => { const m = memberById(memberId); return m && m.uid ? m.uid : null; };
