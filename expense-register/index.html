@@ -40,6 +40,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -208,6 +209,10 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 .openform { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 14px; border-radius: 18px; background: var(--surface); }
 .openform .hint { flex-basis: 100%; }
 .openform .field { width: 150px; flex: 1 1 130px; }
+.pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--lime) 55%, var(--surface)); color: var(--on-lime); margin-inline: 6px; vertical-align: 1px; }
+.entry .d span .pill { margin-left: 0; }
+.rolenote { margin: 0; padding: 12px 16px; border-radius: 16px; background: color-mix(in srgb, var(--lime) 30%, var(--surface)); color: var(--ink); font-size: 14px; font-weight: 500; }
+[data-role="member"] #payerGroup, [data-role="member"] #familyCard, [data-role="member"] #personCard, [data-role="member"] #filter { display: none; }
 .settings { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .notice { background: var(--panel); border-radius: var(--r); padding: 16px 18px; font-size: 14px; }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--forest); color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: opacity .2s, transform .2s; max-width: calc(100% - 32px); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
@@ -240,6 +245,18 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <div class="chips" id="filter" aria-label="Show"></div>
   </section>
 
+  <p class="rolenote" id="roleNote" hidden></p>
+
+  <section class="card" id="joinCard" hidden aria-label="Join the register">
+    <h2>Which one are you?</h2>
+    <p class="hint">Pick your name so your entries go to the right person. The admin confirms it.</p>
+    <div class="group" id="joinChipsWrap"><div class="chips" id="joinChips"></div></div>
+    <form class="row" id="joinForm" autocomplete="off">
+      <input class="field" id="joinName" placeholder="Not listed? Type your name" maxlength="30" aria-label="Your name">
+      <button class="btn" type="submit">Join</button>
+    </form>
+  </section>
+
   <form class="card formcard" id="form" autocomplete="off" aria-label="Add an entry">
     <div class="seg" role="group" aria-label="Entry type">
       <button type="button" id="kindExp" aria-pressed="true">Expense</button>
@@ -258,7 +275,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       <span class="label" id="catLabel">Category</span>
       <div class="chips" id="cats"></div>
     </div>
-    <div class="group">
+    <div class="group" id="payerGroup">
       <span class="label" id="payerLabel">Paid by</span>
       <div class="chips" id="payers"></div>
       <p class="hint" id="payerHint" hidden>Add yourself and your family below to choose who paid.</p>
@@ -309,7 +326,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     </div>
   </section>
 
-  <section class="card t-sun" aria-label="Spending by person">
+  <section class="card t-sun" id="personCard" aria-label="Spending by person">
     <h2>Spending by person</h2>
     <div class="stack" id="memberStack"></div>
     <div class="bars" id="memberBars"></div>
@@ -322,14 +339,14 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     </div>
   </section>
 
-  <section class="card t-lime" aria-label="Family">
+  <section class="card t-lime" id="familyCard" aria-label="Family">
     <h2>Family</h2>
     <div class="members" id="members"></div>
     <form class="row" id="memberForm" autocomplete="off">
       <input class="field" id="memberName" placeholder="Add a name, e.g. Priya" maxlength="30" aria-label="Family member name">
       <button class="btn" type="submit">Add</button>
     </form>
-    <p class="hint">To let family add their own entries, use Share on this page and give them Contributor access. Everyone sees the same register.</p>
+    <p class="hint">You are the admin. To let family add entries, use Share and give them Contributor access. Each person sees only their own entries, balance and loans. Only you see everyone, and only you can change or delete entries.</p>
     <div class="settings">
       <label class="label" for="currency">Currency</label>
       <select class="field" id="currency" style="width:auto">
@@ -376,7 +393,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   const now = new Date();
 
   const state = {
-    db: null, canWrite: true, uid: null,
+    db: null, canWrite: true, uid: null, role: null,
     year: now.getFullYear(), month: now.getMonth(),
     expenses: [], members: [], currency: "INR",
     kind: "expense", cat: "Groceries", src: "Salary", ttype: "Loan", to: null, payer: null, transfers: [], filter: "all", editingId: null,
@@ -616,14 +633,19 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const mini = el("span", "mini", m ? initials(m.name) : "?"); mini.style.background = colorFor(m);
     who.append(emo, mini);
     who.title = m ? m.name : "Unassigned";
-    const d = el("div", "d"); d.tabIndex = 0; d.setAttribute("role", "button"); d.setAttribute("aria-label", "Edit " + (e.note || e.category));
+    const admin = state.role === "owner";
+    const d = el("div", "d");
+    if (admin) { d.tabIndex = 0; d.setAttribute("role", "button"); d.setAttribute("aria-label", "Edit " + (e.note || e.category)); }
     if (isTransfer(e)) d.append(el("b", null, e.note || `${e.category} to ${nm(toM)}`), el("span", null, `${nm(m)} → ${nm(toM)} · ${e.category}`));
     else d.append(el("b", null, e.note || e.category), el("span", null, e.note ? `${e.category} · ${nm(m)}` : nm(m)));
-    d.onclick = () => startEdit(e);
-    d.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); startEdit(e); } };
+    if (e.pending) { const pl = el("span", "pill", "Waiting for admin"); d.querySelector("span").prepend(pl); }
+    if (admin) {
+      d.onclick = () => startEdit(e);
+      d.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); startEdit(e); } };
+    } else d.style.cursor = "default";
     const right = el("div", "r");
     right.append(isIncome(e) ? el("span", "amt in", "+" + fmt(e.amount)) : isTransfer(e) ? el("span", "amt tr", "⇄ " + fmt(e.amount)) : el("span", "amt", fmt(e.amount)));
-    if (state.canWrite) {
+    if (admin && state.canWrite) {
       const x = el("button", "ghost x", "Delete"); x.type = "button";
       let timer;
       x.onclick = async () => {
@@ -633,7 +655,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
           return;
         }
         clearTimeout(timer);
-        try { await state.db.doc("expenses/" + e.id).delete(); toast("Deleted"); if (state.editingId === e.id) resetForm(); }
+        try { await state.db.doc("expenses/" + e.id).delete(); await syncMirrors(null, e); toast("Deleted"); if (state.editingId === e.id) resetForm(); }
         catch (err) { toast(errText(err)); }
       };
       right.append(x);
@@ -651,7 +673,9 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const dot = el("span", "av", initials(m.name)); dot.style.background = colorFor(m);
       const o = opening(m);
       const obText = `Opening ${fmtSigned(o.amount, true)} · from ${shortDate(o.date)}`;
-      row.append(dot, el("span", "n", m.name));
+      const n = el("span", "n", m.name);
+      if (m.uid) n.append(el("span", "pill", "Signed in"));
+      row.append(dot, n);
       if (state.canWrite) {
         const ob = el("button", "ghost s", obText); ob.type = "button";
         ob.setAttribute("aria-label", "Change opening balance for " + m.name);
@@ -714,6 +738,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     return out;
   }
   async function fetchMonth(ym) {
+    if (state.role === "member") return state.all.filter((e) => ymOf(e.date) === ym);
     if (state.prior[ym]) return state.prior[ym];
     const [y, mo] = ym.split("-").map(Number);
     const snap = await state.db.collection("expenses")
@@ -828,7 +853,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       const da = el("span", "dot"); da.style.background = colorFor(ma);
       w.append(da, el("b", null, ma ? ma.name : "Someone"), document.createTextNode(" owes "), el("b", null, mb ? mb.name : "someone"));
       row.append(w, el("span", "amt", fmt(v)));
-      if (state.canWrite && ma && mb && !ma.archived && !mb.archived) {
+      if (state.canWrite && ma && mb && !ma.archived && !mb.archived && (state.role === "owner" || a === state.filter)) {
         const settle = el("button", "ghost", "Record repayment"); settle.type = "button";
         settle.onclick = () => {
           if (state.editingId) resetForm();
@@ -867,7 +892,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   $("kindInc").onclick = () => setKind("income");
   $("kindTr").onclick = () => setKind("transfer");
   function startEdit(e) {
-    if (!state.canWrite) return;
+    if (!state.canWrite || state.role !== "owner") return;
     state.editingId = e.id;
     $("amount").value = String(e.amount); $("note").value = e.note || ""; $("date").value = e.date;
     state.kind = isIncome(e) ? "income" : isTransfer(e) ? "transfer" : "expense";
@@ -901,14 +926,26 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     };
     $("save").disabled = true;
     try {
+      if (state.role === "member") {
+        // family members submit to their own inbox; the admin's page files it in the register
+        await state.db.collection(`inbox/${state.uid}/items`).add({ ...body, by: "me", createdAt: Date.now() });
+        await state.db.doc("inbox/" + state.uid).set({ ...(state.claim || {}), touchedAt: Date.now() });
+        toast("Submitted " + fmt(amount) + ". Only the admin can change it now.");
+        const [y, m] = date.split("-").map(Number);
+        if (y !== state.year || m - 1 !== state.month) { state.year = y; state.month = m - 1; }
+        resetForm(); memberDerive();
+        return;
+      }
       if (state.editingId) {
         const old = state.expenses.find((e) => e.id === state.editingId);
         await state.db.doc("expenses/" + state.editingId).update(body);
+        await syncMirrors({ ...(old || {}), ...body, id: state.editingId }, old);
         if (old) delete state.prior[old.date.slice(0, 7)];
         delete state.prior[date.slice(0, 7)];
         toast("Saved");
       } else {
-        await state.db.collection("expenses").add({ ...body, createdAt: Date.now(), createdBy: state.uid || null });
+        const ref = await state.db.collection("expenses").add({ ...body, createdAt: Date.now(), createdBy: state.uid || null });
+        await syncMirrors({ ...body, createdAt: Date.now(), id: ref.id }, null);
         toast((tr ? "Recorded transfer of " : inc ? "Added income " : "Added ") + fmt(amount));
         // jump to the entry's month if it was logged elsewhere
         const [y, m] = date.split("-").map(Number);
@@ -947,7 +984,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
 
   function errText(e) {
     const code = e && e.code;
-    if (code === "invalid_argument") { state.canWrite = false; renderAll(); return "You can view this register but not change it. Ask the owner for Contributor access."; }
+    if (code === "invalid_argument") { state.canWrite = false; renderAll(); return "Your access doesn't allow this. Ask the admin to give you Contributor access."; }
     if (code === "quota_exceeded") return "The register is full. Delete some old entries to add new ones.";
     if (code === "resource_exhausted") return "Too many changes at once. Wait a moment and try again.";
     return "Couldn't save. Check your connection and try again.";
@@ -960,21 +997,150 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   }
 
   // ---------- data ----------
+  // Storage layout (access is enforced by the page's db rules, not just the UI):
+  //   expenses/, members/          admin only: the full family register
+  //   directory/main, settings/main  names + currency, readable by family
+  //   inbox/<uid>/items/*          a family member's submissions; admin moves them into expenses/
+  //   people/<uid>, people/<uid>/entries/*  copy of one person's own entries, written only by the admin
   function subscribeMonth() {
+    if (state.role === "member") { memberDerive(); return; }
     if (state.unsubMonth) state.unsubMonth();
     state.loaded = false; state.expenses = []; renderAll();
-    if (!state.db) return;
+    if (!state.db || state.role !== "owner") return;
     const { start, end } = monthRange();
     state.unsubMonth = state.db.collection("expenses")
       .where("date", ">=", start).where("date", "<=", end)
       .orderBy("date", "desc").limit(1000)
       .onSnapshot((snap) => {
-        state.expenses = snap.docs.map((d) => { const e = { id: d.id, ...d.data() }; if (RENAMED[e.category]) e.category = RENAMED[e.category]; return e; }).filter((e) => typeof e.amount === "number");
+        state.expenses = snap.docs.map(toEntry).filter((e) => typeof e.amount === "number");
         state.loaded = true;
         state.prior[start.slice(0, 7)] = state.expenses;
         renderSummary(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
       }, () => { state.loaded = true; renderAll(); });
   }
+  function toEntry(d) { const e = { id: d.id, ...d.data() }; if (RENAMED[e.category]) e.category = RENAMED[e.category]; return e; }
+  const entryFields = (e) => ({ type: e.type || "expense", amount: e.amount, date: e.date, category: e.category, note: e.note || "", by: e.by || null, to: e.to || null, createdAt: e.createdAt || Date.now() });
+
+  // ----- admin: keep each linked person's own copy in step with the register -----
+  const uidOf = (memberId) => { const m = memberById(memberId); return m && m.uid ? m.uid : null; };
+  async function syncMirrors(entry, prev) {
+    const keep = new Set();
+    if (entry) [entry.by, isTransfer(entry) ? entry.to : null].map(uidOf).filter(Boolean).forEach((u) => keep.add(u));
+    for (const u of keep) await state.db.doc(`people/${u}/entries/${entry.id}`).set(entryFields(entry));
+    if (prev) for (const u of [prev.by, isTransfer(prev) ? prev.to : null].map(uidOf).filter(Boolean)) {
+      if (!keep.has(u)) await state.db.doc(`people/${u}/entries/${prev.id}`).delete();
+    }
+  }
+  async function backfillMirrors(memberId, uid) {
+    const seen = {};
+    for (const field of ["by", "to"]) {
+      const snap = await state.db.collection("expenses").where(field, "==", memberId).limit(1000).get();
+      snap.docs.forEach((d) => { seen[d.id] = toEntry(d); });
+    }
+    for (const e of Object.values(seen)) await state.db.doc(`people/${uid}/entries/${e.id}`).set(entryFields(e));
+  }
+
+  // writes run one at a time so the inbox is never processed twice
+  let chain = Promise.resolve();
+  const queue = (fn) => (chain = chain.then(fn).catch(() => {}));
+  const publicCache = {};
+  async function setIfChanged(path, body) {
+    const json = JSON.stringify(body);
+    if (!(path in publicCache)) { const s = await state.db.doc(path).get(); publicCache[path] = s.exists ? JSON.stringify(s.data()) : null; }
+    if (publicCache[path] === json) return;
+    await state.db.doc(path).set(body); publicCache[path] = json;
+  }
+  function syncPublic() {
+    const ms = state.members.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    queue(async () => {
+      await setIfChanged("directory/main", { members: ms.map((m) => ({ id: m.id, name: m.name, color: m.color || 0, order: m.order || 0, archived: !!m.archived, linked: !!m.uid })) });
+      for (const m of ms) if (m.uid) {
+        const o = opening(m);
+        await setIfChanged("people/" + m.uid, { memberId: m.id, name: m.name, color: m.color || 0, order: m.order || 0, openingBalance: o.amount, openingDate: o.date });
+      }
+    });
+  }
+  function processInbox(uid, claim) {
+    queue(async () => {
+      let m = state.members.find((x) => x.uid === uid);
+      if (!m) {
+        const want = claim.claimMemberId && memberById(claim.claimMemberId);
+        if (want && !want.uid) {
+          await state.db.doc("members/" + want.id).update({ uid });
+          m = { ...want, uid };
+        } else {
+          const name = String(claim.claimName || (want && want.name) || "New member").slice(0, 30);
+          const ref = await state.db.collection("members").add({ name, color: state.members.length % 8, order: Date.now(), archived: false, uid });
+          m = { id: ref.id, name, uid, order: Date.now() };
+        }
+        state.members = state.members.filter((x) => x.id !== m.id).concat(m);
+        await backfillMirrors(m.id, uid);
+        toast(m.name + " joined the register");
+      }
+      const items = await state.db.collection(`inbox/${uid}/items`).limit(200).get();
+      for (const d of items.docs) {
+        const it = d.data() || {};
+        const ok = typeof it.amount === "number" && it.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(it.date || "")
+          && (it.type !== "transfer" || (memberById(it.to) && it.to !== m.id));
+        if (ok) {
+          const e = { id: d.id, ...entryFields({ ...it, by: m.id, to: it.type === "transfer" ? it.to : null }), submittedBy: uid };
+          await state.db.doc("expenses/" + d.id).set({ ...entryFields(e), createdBy: uid });
+          await syncMirrors(e, null);
+          delete state.prior[e.date.slice(0, 7)];
+        }
+        await state.db.doc(`inbox/${uid}/items/${d.id}`).delete();
+      }
+    });
+  }
+
+  // ----- family member view: built from their own copy plus pending submissions -----
+  function memberDerive() {
+    const p = state.profile, claim = state.claim || {};
+    const selfId = p ? p.memberId : "me";
+    const dir = (state.directory || []).filter((m) => m.id !== selfId);
+    const self = { id: selfId, name: p ? p.name : (claim.claimName || (dir.find((m) => m.id === claim.claimMemberId) || {}).name || "You"),
+      color: p ? p.color : 0, order: p ? p.order : 0, openingBalance: p ? p.openingBalance : 0, openingDate: p ? p.openingDate : firstOf(Date.now()) };
+    state.members = [self, ...dir];
+    const pending = state.pending.map((e) => ({ ...e, by: selfId, pending: true }));
+    state.all = state.accepted.concat(pending);
+    state.filter = selfId; state.payer = selfId;
+    const { start, end } = monthRange();
+    state.expenses = state.all.filter((e) => e.date >= start && e.date <= end);
+    state.transfers = state.all.filter(isTransfer);
+    state.prior = {};
+    state.loaded = state.gotAccepted && state.gotPending;
+    renderAll();
+  }
+  function renderJoin() {
+    const card = $("joinCard");
+    const need = state.role === "member" && state.gotClaim && !state.profile && !(state.claim && (state.claim.claimMemberId || state.claim.claimName));
+    card.hidden = !need;
+    $("form").hidden = need;
+    const waiting = state.role === "member" && !state.profile && !need && state.gotClaim;
+    $("roleNote").textContent = state.role !== "member" ? ""
+      : waiting ? "Your entries are saved and waiting for the admin to confirm you. They join the family register the next time the admin opens it."
+      : "You see only your own money here. Once you submit an entry, only the admin can change or delete it.";
+    $("roleNote").hidden = state.role !== "member";
+    if (!need) return;
+    const box = $("joinChips"); box.replaceChildren();
+    (state.directory || []).filter((m) => !m.archived && !m.linked).forEach((m) => {
+      const b = el("button", "chip"); b.type = "button";
+      const dot = el("span", "dot"); dot.style.background = colorFor(m);
+      b.append(dot, document.createTextNode(m.name));
+      b.onclick = () => claim({ claimMemberId: m.id });
+      box.append(b);
+    });
+    $("joinChipsWrap").hidden = !box.children.length;
+  }
+  async function claim(body) {
+    try { await state.db.doc("inbox/" + state.uid).set({ ...body, touchedAt: Date.now() }); toast("Thanks. You can add entries now."); }
+    catch (e) { toast(errText(e)); }
+  }
+  $("joinForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const name = $("joinName").value.trim().slice(0, 30);
+    if (name) claim({ claimName: name });
+  });
 
   $("date").value = todayIso();
   renderAll();
@@ -991,21 +1157,53 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       return;
     }
     state.db = db;
+    let owner = false;
     if (user) {
       try { state.uid = await user.id(); } catch (e) {}
+      try { owner = !!(await user.isOwner()); } catch (e) {}
       try { const w = await user.can("data.write"); if (w === false) state.canWrite = false; } catch (e) {}
     }
-    db.collection("members").onSnapshot((snap) => {
-      state.members = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => typeof m.name === "string");
-      renderChips(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
-    });
+    state.role = owner ? "owner" : state.uid ? "member" : "none";
+    document.documentElement.dataset.role = state.role;
     db.doc("settings/main").onSnapshot((snap) => {
       const c = snap.exists && snap.data().currency;
       if (c && c !== state.currency) { state.currency = c; fmtCache = {}; renderAll(); }
     });
+
+    if (state.role === "none") {
+      $("offline").textContent = "Sign in to claude.ai to use the family register.";
+      $("offline").hidden = false; $("form").hidden = true; state.loaded = true; renderAll();
+      return;
+    }
+
+    if (state.role === "member") {
+      Object.assign(state, { accepted: [], pending: [], directory: [], profile: null, claim: null, gotAccepted: false, gotPending: false, gotClaim: false });
+      const live = (ref, fn) => ref.onSnapshot(fn, () => { state.loaded = true; renderAll(); });
+      live(db.doc("directory/main"), (s) => { state.directory = (s.exists && s.data().members) || []; memberDerive(); renderJoin(); });
+      live(db.doc("people/" + state.uid), (s) => { state.profile = s.exists ? s.data() : null; memberDerive(); renderJoin(); });
+      live(db.doc("inbox/" + state.uid), (s) => { state.claim = s.exists ? s.data() : null; state.gotClaim = true; memberDerive(); renderJoin(); });
+      live(db.collection(`people/${state.uid}/entries`).limit(1000), (s) => { state.accepted = s.docs.map(toEntry); state.gotAccepted = true; memberDerive(); });
+      live(db.collection(`inbox/${state.uid}/items`).limit(1000), (s) => { state.pending = s.docs.map(toEntry); state.gotPending = true; memberDerive(); });
+      return;
+    }
+
+    db.collection("members").onSnapshot((snap) => {
+      state.members = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => typeof m.name === "string");
+      renderChips(); renderBreakdown(); renderLedger(); renderMembers(); renderBalance(); renderDebts();
+      syncPublic();
+      if (state.inboxDocs) state.inboxDocs.forEach(([uid, c]) => processInbox(uid, c));
+      state.membersLoaded = true;
+    });
     db.collection("expenses").where("type", "==", "transfer").limit(1000).onSnapshot((snap) => {
-      state.transfers = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => typeof e.amount === "number");
+      state.transfers = snap.docs.map(toEntry).filter((e) => typeof e.amount === "number");
       renderDebts();
+    });
+    db.collection("inbox").onSnapshot((snap) => {
+      const docs = snap.docs.map((d) => [d.id, d.data() || {}]);
+      // wait for the family list before matching people, then the members listener runs them
+      if (!state.membersLoaded) { state.inboxDocs = docs; return; }
+      state.inboxDocs = null;
+      docs.forEach(([uid, c]) => processInbox(uid, c));
     });
     subscribeMonth();
   })();
