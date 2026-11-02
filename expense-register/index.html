@@ -290,6 +290,7 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     <div class="label" id="totalLabel" data-dyn="1">Spent this month</div>
     <div class="total" id="total">—</div>
     <div class="stats">
+      <div><span class="label" data-edit="stat-forward">Brought forward</span><span class="v" id="sFwd">—</span></div>
       <div><span class="label" data-edit="stat-income">Income</span><span class="v" id="sIncome">—</span></div>
       <div><span class="label" data-edit="stat-spent">Spent</span><span class="v" id="sBal">—</span></div>
       <div><span class="label" data-edit="stat-today">Today</span><span class="v" id="sToday">—</span></div>
@@ -555,8 +556,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     $("monthLabel").textContent = d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
     $("next").disabled = isCurrentMonth();
     const tl = $("totalLabel");
-    if (isCurrentMonth()) tl.dataset.edit = "balance-now"; else delete tl.dataset.edit;
-    if (document.activeElement !== tl) tl.textContent = isCurrentMonth() ? T("balance-now", "Balance this month") : "Balance in " + d.toLocaleDateString(undefined, { month: "long" });
+    if (isCurrentMonth()) tl.dataset.edit = "balance-total"; else delete tl.dataset.edit;
+    if (document.activeElement !== tl) tl.textContent = isCurrentMonth() ? T("balance-total", "Balance") : "Balance at end of " + d.toLocaleDateString(undefined, { month: "long" });
     $("curSym").textContent = curSymbol();
     $("logoSym").textContent = curSymbol();
     $("currency").value = state.currency;
@@ -577,10 +578,14 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
     const { days } = monthRange();
     const elapsed = isCurrentMonth() ? new Date().getDate() : days;
     const today = sum(list.filter((e) => e.date === todayIso()));
-    // the big number is the month's balance (income − spending); spending sits in the small box
-    const bal = income - total;
+    // the big number is the running balance: brought forward from last month + this month's money in − out
+    // (the same figures as the Daily balance table); without people set up it falls back to this month alone
+    const hero = state.balHero && state.balHero.key === heroKey() ? state.balHero : null;
+    const bal = hero ? hero.close : income - total;
     $("total").textContent = state.loaded ? (bal < 0 ? "−" : "") + fmt(Math.abs(bal)) : "—";
     $("total").classList.toggle("neg", state.loaded && bal < 0);
+    $("sFwd").textContent = state.loaded && hero ? (hero.open < 0 ? "−" : "") + fmt(Math.abs(hero.open)) : "—";
+    $("sFwd").className = "v" + (hero && hero.open < 0 ? " neg" : "");
     $("sIncome").textContent = state.loaded ? fmt(income) : "—";
     $("sBal").textContent = state.loaded ? fmt(total) : "—";
     $("sToday").textContent = state.loaded ? (isCurrentMonth() ? fmt(today) : "—") : "—";
@@ -960,10 +965,11 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
   }
 
   let balToken = 0;
+  const heroKey = () => `${state.year}-${state.month}-${state.filter}`;
   async function renderBalance() {
     const token = ++balToken;
     const body = $("balBody"), line = $("balLine");
-    const msg = (t) => { body.replaceChildren(); const tr = el("tr"); const td = el("td", "msg", t); td.colSpan = 5; tr.append(td); body.append(tr); line.replaceChildren(); };
+    const msg = (t) => { body.replaceChildren(); const tr = el("tr"); const td = el("td", "msg", t); td.colSpan = 5; tr.append(td); body.append(tr); line.replaceChildren(); if (state.balHero) { state.balHero = null; renderSummary(); } };
     const people = state.filter === "all" ? activeMembers() : [memberById(state.filter)].filter(Boolean);
     $("balWho").textContent = state.filter === "all" ? (people.length > 1 ? "Whole family" : "") : (people[0] ? people[0].name : "");
     if (!state.loaded || !state.db) { msg("Loading…"); return; }
@@ -1031,6 +1037,8 @@ table.bal { width: 100%; border-collapse: collapse; font-size: 14px; }
       body.append(tr);
     });
     const first = rows[active[0]], last = rows[active[active.length - 1]];
+    state.balHero = { key: heroKey(), open: first.open, close: last.close };
+    renderSummary();
     const stat = (k, v, neg) => { const d = el("div"); d.append(el("span", "label", k), el("span", "v" + (neg ? " neg" : ""), v)); return d; };
     line.replaceChildren(
       stat("Opening · " + shortDate(active[0]), fmtSigned(first.open), first.open < 0),
