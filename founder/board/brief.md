@@ -1,23 +1,20 @@
-# Board brief: Shail Tradelink
+# Board brief: Shail Tradelink (round 2)
 
 This brief is self-contained. It is everything the founder has said so far.
 
-## The idea (founder/idea.md)
-
+## The idea
 - Name: Shail Tradelink
-- What it is: an export trading business based in Gujarat, India, shipping Indian goods to overseas buyers.
-- Product categories the founder named: spices, groundnuts, brass parts, processed food, "and other FMCG goods".
-- Based in: Gujarat, India.
+- What it is: an export trading business based in Gujarat, India.
+- Products: whole and ground spices, groundnuts, namkeen and snacks, ready-to-eat meals, and other food & beverages.
+- Buyers: B2B only: importers, wholesalers and retail chains.
+- Target countries: UAE, Thailand, Vietnam, Indonesia, Russia.
 
-## What the founder has NOT said (treat as unknown; do not assume answers)
+## History
+In round 1, the founder pitched spices, groundnuts, brass parts, processed food and "other FMCG" to "any country". A three-lens board voted 3 PASS (3/10 each), mainly for lack of focus, no edge beyond commodity price, no defined buyer, and no proof or quality control. Since then the founder has dropped brass parts, limited the business to food, and named five countries and the buyer types above. Judge this version on its merits; you may note what improved and what did not.
 
-- Which of these categories comes first, or whether all launch together.
-- Target countries and type of buyer (importers, distributors, retail chains, online consumers).
-- Whether they manufacture, or source from local manufacturers/farmers and resell (merchant exporter).
+## Still unknown (do not assume answers)
+- Which country and product are first, or whether all launch together.
+- Manufacture vs. source-and-resell (merchant exporter); any own brand vs. private label/bulk.
 - Prices, order sizes, margins, payment terms, Incoterms.
-- Starting budget, existing licences/certifications (IEC, APEDA, Spices Board, FSSAI etc.), supplier relationships, prior export experience, team.
-- How they plan to find their first overseas buyers.
-
-## Context a stranger needs
-
-The founder answered "spices, groundnuts, brass parts or processed food and other fmcg goods" when asked what they would export. Gujarat is a known origin for groundnuts and spices (and Jamnagar for brass parts), but no claim is made here about the founder's specific access to any of them.
+- Starting budget, licences/certifications held (IEC, FSSAI, APEDA, Spices Board, halal, etc.), supplier relationships, prior export experience, team.
+- How the first overseas buyers will be found.

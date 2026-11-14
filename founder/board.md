@@ -1,32 +1,35 @@
-# Board verdict: Shail Tradelink
+# Board verdict: Shail Tradelink (round 2)
 
 ## The vote
-**3 PASS, 0 fund, 0 fund if.** Average score: **3.0 / 10** (Offers 3, Monopoly 3, Product 3).
-
-This vote is on the idea as it was pitched: a Gujarat exporter of spices, groundnuts, brass parts, processed food and other FMCG goods, with no buyer, country, price or budget defined yet. All three members said what would change their vote (see below). This PASS means "not like this", not "never".
+**2 PASS, 1 FUND IF.** Average score **4.0 / 10** (Offers 4 PASS, Monopoly 4 PASS, Product 4 FUND IF).
+Round 1 was 3 PASS, 3.0/10. Every member scored the narrowing (food only, five named countries, named buyer types) as real progress. The pitch as it stands, five product families to five countries, is still a PASS for two of three.
 
 ## Risks raised by more than one member (most serious first)
-1. **No focus (all three).** Five categories means five businesses, each with its own buyers, certifications, quality checks and logistics. Brass parts are an engineering supply chain; spices and food are a regulated food supply chain.
-2. **Commodity with no edge (all three).** As described, any Gujarat merchant exporter can offer the same goods, so buyers will compare on price and margins will be thin. No guarantee, proof or advantage was named.
-3. **No customer and no plan to reach one (all three).** No target country, no buyer type, and no plan for winning the first buyers. The cost of winning each buyer is unknown.
-4. **No proof or quality control (Offers, Product).** A new exporter has no track record, certifications or reference customers. If the business resells, quality (grade, contamination, finish) is controlled by suppliers, not by Shail Tradelink. One rejected shipment can sink the relationship.
+1. **Still too broad (all three).** Five product families × five countries = 25 different businesses, each with its own regulations, shelf life, paperwork, payment setup and buyers. Russia and Southeast Asia differ sharply.
+2. **Nothing to sell but price (all three).** Many Indian exporters already offer spices and groundnuts. As pitched, buyers will compare on price, and a new exporter without volume loses on price.
+3. **No proof and no owned quality control (all three).** No certifications on record, no track record, no samples or lab reports. If it resells, suppliers control quality, and one rejected container ends that buyer relationship.
+4. **No plan to reach buyers (Monopoly, Offers).** How the first buyers are found, and what each costs to win, is still blank.
 
 ## Where they differed
-- **Offers** cares most about *proof and the offer*. Importers already buy these goods; the problem is giving them a reason to trust a new supplier, through guarantees, lab reports and trial orders.
-- **Monopoly** cares most about *what is hard to copy*: an exclusive or verified supply, a certification others lack, or a buyer relationship. It also asks what stops your supplier from selling to your buyer directly.
-- **Product** cares most about *the buyer's experience of the first container*: what arrives, what the buyer checks, and what makes them reorder. It wants the operation built backwards from that.
+- **Vote:** Product voted FUND IF. It sees quality that can be tested lot by lot (moisture, purity, aflatoxin, residue) as a credible way to stand out, if quality is owned. Offers and Monopoly stay at PASS until there is proof and a real edge.
+- **Where to start:**
+  - Offers: **UAE + namkeen/snacks or spices → wholesalers and grocery chains serving South Asian shoppers** (reachable, short route).
+  - Product: **UAE + whole and ground spices** (shelf-stable, quality can be tested by lot, UAE is a re-export hub).
+  - Monopoly: **a Gujarat-origin product such as cumin or groundnuts**, where being close to the source actually counts, sold to a *narrow* buyer group. It warned that UAE general trade may be the most crowded option, and that a less crowded country could be better.
+  - Overlap: **spices** appear in all three; **UAE** in two of three. None of these choices has been checked yet.
 
-## Conditions checklist (to move the vote to FUND IF)
-- [ ] Pick **one category, one destination country and one buyer type** (e.g. importers, distributors or retail chains). *(all three)*
-- [ ] State a **one-sentence pitch** for that buyer. *(Product)*
-- [ ] Name a **defensible advantage**: exclusive or verified supply, a certification, traceability, or an existing buyer relationship. *(Monopoly)*
-- [ ] Build an **offer around that buyer's real pains** (e.g. verified quality, guaranteed ship date, paperwork handled) with **at least one guarantee the business can afford**. *(Offers → /founder-offer, /founder-cfo)*
-- [ ] Define **quality control at every handover** from supplier to container. *(Product → /founder-ops)*
-- [ ] Get **early proof**: samples accepted, a lab report, a trial order or a letter of intent. *(Offers → /founder-launch)*
-- [ ] Map **who already supplies the target buyer, at what price, and what buyers complain about**. *(→ /founder-competitors)*
-- [ ] Plan **how the first 10 buyers are found** and what each costs to win. *(Monopoly → /founder-competitors, /founder-marketing)*
-- [ ] Work out a **margin per shipment** (sourcing + freight + certification + payment terms) that survives price competition, and the **cash tied up per shipment**. *(→ /founder-cfo)*
-- [ ] List the **licences and certifications held today** (IEC, APEDA, Spices Board, FSSAI, etc.). *(all three)*
+## Conditions checklist (to move to FUND / FUND IF)
+- [ ] **One product line, one country, one buyer type** for the first 6–12 months; delay ready-to-eat, namkeen and the other countries until repeat orders come. *(all three → verify with /founder-competitors)*
+- [ ] A **one-sentence pitch**: what, to whom, where, and why you rather than the trader next door. *(Product, Monopoly)*
+- [ ] A **named edge**: verified grading/quality control, exclusive farm or processor access, or a cleaning/packing step others don't do. *(Monopoly)*
+- [ ] **Own quality control on every lot**: written spec, independent lab report / certificate of analysis, pre-shipment inspection, even if production is outsourced. *(Product, Offers → /founder-ops)*
+- [ ] An **offer stack beyond price**: documents handled for the buyer, low trial minimums or private label, a written spec guarantee the CFO can afford. *(Offers → /founder-offer, /founder-cfo)*
+- [ ] **Licences and certifications in hand** for the chosen market (IEC, FSSAI, Spices Board/APEDA, halal where needed). *(all three → /founder-ops)*
+- [ ] **Buyer journey written down** from first enquiry to re-order, with an owner at each handoff. *(Product)*
+- [ ] **Plan to land the first 10 buyers**, with a cost for each; at least one sample order or letter of intent. *(Monopoly → /founder-marketing, /founder-launch)*
+- [ ] **2–3 paid trial orders delivered to spec** before scaling. *(Offers → /founder-launch)*
+- [ ] **Container-level numbers**: price, order size, margin after freight, duties and payment terms. *(all three → /founder-cfo)*
+- [ ] **Competitor map** for the chosen pair: who supplies these buyers now, at what price, and what buyers complain about. *(all three → /founder-competitors)*
 
 ## The strongest version the board can see
-This is **not** what was pitched. The board can see a focused Gujarat exporter. It owns **one** product line where Gujarat's origin actually matters, such as groundnuts or a specific spice. It sells **one** verified grade to **one** type of buyer in **one** country, with lab-tested lots, traceable sourcing and a guaranteed ship date as the offer. It starts with samples and a single trial container, earns reference customers, and only then adds a second category. Brass parts and general FMCG would be separate businesses for later, not part of the launch. The board has no evidence yet that this narrowed version works. That is what the next skills test.
+This is narrower than what was pitched. Shail Tradelink would be a **quality-verified Gujarat spice exporter** (whole and ground spices, possibly led by a Gujarat-origin spice such as cumin). It would sell to **one buyer type in one country**, with the UAE as the front-runner but not yet checked. Every lot would ship with its own lab report, a written spec and complete paperwork, so the buyer gets reliability instead of the lowest quote. Groundnuts are the natural second line. Namkeen, ready-to-eat meals and the other four countries would come after the first pair produces repeat orders. The board has not seen evidence that this version wins. The next skills test it.

@@ -1,27 +1,27 @@
 # Offers lens
-Score: 3 | Vote: PASS
+Score: 4/10 | Vote: PASS
 
 ## What is strong
-- **The buyers have money.** Overseas importers and distributors buy spices, groundnuts and brass parts every year, and they buy in volume. Nobody has to be convinced the product category exists.
-- **The origin is credible.** Gujarat is a known source for groundnuts and spices, and Jamnagar for brass parts. If the founder really has supplier access, "sourced at origin" could become the start of the "likelihood" part of the value equation.
-- **The stack has obvious raw material.** Importers face real problems: inconsistent quality, failed lab tests, late shipments, paperwork errors and unreliable suppliers. Each one could become a promise in the offer.
+- Real progress since round 1: brass is gone, the buyer is named (importers, wholesalers, retail chains), and the map is five countries instead of "any". That moves the market score up.
+- The buyer side passes the money test: B2B food importers and chains buy every month and pay for reliable supply.
+- The buyer's pain is real and recurring: inconsistent quality, short shipments, missing paperwork, failed lab tests at the border and late containers all cost an importer money. An offer built on removing those pains could be strong. None of it is in the pitch yet.
 
 ## What would kill it (the top 3, most dangerous first)
-1. **It is a commodity with no offer.** As described, it is a list of goods anyone in Gujarat can ship. With nothing beyond the goods, buyers can only compare on price, and this lens passes on businesses that compete on price. The brief names no guarantee, no proof and no reason to pick this supplier over an established one.
-2. **No market has been picked.** Five categories, no target country and no buyer type. Spice buyers, brass-parts buyers and FMCG buyers have different pains, rules and channels. The offer can't be built until one buyer is picked.
-3. **Likelihood is close to zero for a new exporter.** Nothing in the brief shows a track record, certifications or reference customers. Asking an importer to prepay or open a letter of credit with an unproven supplier is a large effort and sacrifice for that importer. Most offers fail on proof, and this one has none yet.
+1. **Nothing to sell except price.** Spices and groundnuts from India are offered by many exporters. Nothing here gives the buyer more of the outcome, faster or with less effort. Competing on price makes this a commodity trade with thin margins, and a new exporter with no volume loses that fight.
+2. **Likelihood is close to zero.** A buyer wiring money for a first container has to believe the goods will arrive on spec, on time and through customs. There are no certifications on record (FSSAI, APEDA, Spices Board, halal), no track record, no samples and no lab reports. Weak proof is where this kind of offer usually fails.
+3. **Still five product lines across five markets.** Ready-to-eat meals, snacks, spices and groundnuts each come with their own rules, shelf life and buyers. Russia and Southeast Asia need very different paperwork and payment setups. Spreading across all of them means no single buyer gets an offer built for them.
 
 ## The questions I would ask the founder
-- Which single category, to which country, for which buyer (importer, distributor, retail chain) comes first?
-- Do you manufacture or process anything yourself, or are you a merchant exporter? Which supplier relationships do you already have?
-- What problem do your target buyers have with their current Indian suppliers? (/founder-competitors can pull public complaints.)
-- What could you guarantee, such as specs, lab-test results, ship dates or replacement terms, and what would it cost you when you miss? (/founder-cfo)
-- What margin, order size and payment terms are realistic? None are known yet. (/founder-cfo, with competitor prices from /founder-competitors)
-- Which licences and certifications do you hold today?
-- Would a buyer pay more for your offer than for the cheapest quote? (/founder-consumer can test the pitch, framed for B2B buyers.)
+- Which one buyer, in which one country, buying which one product, do you serve first?
+- What will you promise that other Gujarat exporters do not: lab-tested lots, a guaranteed spec, on-time shipment with a penalty, private label with small minimum orders?
+- What proof can you show a buyer before the first order: certificates, third-party inspection, references, samples?
+- Do you make the goods or source them? Who controls quality if you source?
+- What guarantee can you afford, such as a replacement or refund if a lot fails the agreed spec? (/founder-cfo prices this.)
+- Prices, order sizes, margins, payment terms and Incoterms are all open. /founder-competitors gives competitor prices, /founder-consumer tests what buyers would pay and /founder-cfo checks the margin.
 
 ## If FUND IF: the conditions
-Not applicable, because the vote is PASS. Three changes would move this to FUND IF:
-1. Narrow to one category, one country and one buyer type.
-2. Write a stack built on that buyer's real pains, for example verified quality, a guaranteed ship date and paperwork handled, with at least one guarantee the CFO says the business can afford.
-3. Get early proof: samples accepted, a lab report, or a first trial order or letter of intent.
+This is a PASS. These changes would make it a FUND IF:
+1. **One starting point.** My hypothesis: **UAE + namkeen/snacks or spices, sold to wholesalers and grocery chains serving South Asian shoppers.** Reasons: buyers there are concentrated and easy to reach, Gujarat is a credible origin for these products, and the shipping route is short. This needs verification by /founder-competitors (how crowded it is, what prices look like) before anyone relies on it.
+2. **A stack beyond price.** For example: certificate of analysis on every lot, pre-shipment inspection, all export documents done for the buyer, low trial minimums or private label, and a written spec guarantee.
+3. **Proof before scale.** Licences and certifications in hand, plus 2–3 paid trial orders delivered to spec.
+4. **A named offer** that a buyer could explain in one line, tested through /founder-offer.
