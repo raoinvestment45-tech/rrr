@@ -46,7 +46,7 @@ r(35,32.5,5,5,"#bdbdbd","OUT",stroke="#555",fs=12)
 r(17.5,20,4.5,6.5,"#f6e7c1","",stroke="#a07c2c",dash="4 3")
 t(19.75,24,"Walkway &amp;",9.5); t(19.75,25,"drop-off",9.5)
 # hedge buffer
-r(0,20,17.5,1.5,"#5a9e4b",stroke="none"); r(22,20,18,1.5,"#5a9e4b",stroke="none")
+r(0,20,17.5,1.5,"#5a9e4b",stroke="none"); r(22,20,16.1,1.5,"#5a9e4b",stroke="none"); r(38.1,20,1.9,6.5,"#efefe6",stroke="#888",dash="4 3"); t(39.05,25.6,"service",8); t(39.05,26.4,"gate",8)
 t(8.75,21.05,"green hedge buffer",9,c="#fff")
 
 # ---- cafe zone y 0-20
@@ -55,38 +55,59 @@ for cx in [2.3,5.9,9.5]:
     for cy in [1.8,4.9,8.0]:
         tab(cx,cy)
 tab(12.3,4.9);  # 10 tables x4 = 40
-r(0,13.5,11,6.5,"#ffd6d6","NON-MEMBERS · 25 seats",fs=11,ly=14.5)
-for cx in [1.8,4.7,7.6]: tab(cx,15.8)
-tab(9.95,15.8,2)
-for cx in [1.8,4.7]: tab(cx,18.9)
-tab(7.6,18.9,3)
-t(9.9,19.7,"door ↓",9)
-r(11,13.5,3,3.25,"#dbe7f5","MALE","WC",fs=9.5)
-r(11,16.75,3,3.25,"#dbe7f5","FEMALE","WC",fs=9.5)
-r(14,0,7,6,"#dbe7f5","MEMBERS' TOILETS","M · W · ♿ · baby",fs=11.5)
-r(21,0,12,6,"#e6e6e6","KITCHEN + STORE","~72 m² · dishwash",fs=13)
-r(21,6,12,2,"#c7a27c","CAFÉ BAR + CARD TOP-UP",fs=10)
+r(3,13.5,11,6.5,"#ffd6d6","NON-MEMBERS · 25 seats",fs=11,ly=14.5)
+for cx in [4.8,7.7,10.6]: tab(cx,15.8)
+tab(12.95,15.8,2)
+for cx in [4.8,7.7]: tab(cx,18.9)
+tab(10.6,18.9,3)
+r(0,13.5,3,3.25,"#dbe7f5","MALE","WC",fs=9.5)
+r(0,16.75,3,3.25,"#dbe7f5","FEMALE","WC",fs=9.5)
+r(26,1.5,7,4.5,"#dbe7f5","MEMBERS' TOILETS","M · W · ♿ · baby",fs=10.5)
+r(26,0,7,1.5,"#d4d4c4",stroke="#555",sw=1); t(29.5,1.0,"staff link kitchen ↔ BOH",8)
+r(14,0,12,6,"#e6e6e6","KITCHEN + STORE","~72 m² · pass to dining ◀",fs=13)
+r(14,6,12,2,"#c7a27c","CAFÉ BAR + CARD TOP-UP",fs=10)
 r(33,0,7,6,"#d4d4c4","BACK OF HOUSE","staff · bins · compost",fs=11)
 r(37,6,3,14,"#efefe6",stroke="#888",dash="4 3")
 out.append(f'<text x="{OX+38.6*S}" y="{OY+13*S}" font-size="10" text-anchor="middle" transform="rotate(-90 {OX+38.6*S} {OY+13*S})">service path to kitchen</text>')
-r(14,6,7,2,"#e8f3df",stroke="#888",dash="4 3"); t(17.5,7.3,"corridor to toilets",9)
+r(26,6,6,2,"#e8f3df",stroke="#888",dash="4 3"); t(29,7.3,"toilet corridor",9)
 r(14,8,18,7,"#fff6b8","MEMBERS CAFÉ GARDEN LOUNGE · 35 seats","open deck · sofas · swings · counter stools",fs=12,ly=14.15)
 for cx in [16,19.5,26.5,30]: tab(cx,10.4,4,True)
 for cx in [23]: tab(cx,10.4,3,True)
 for cx in [16,30]: tab(cx,12.0,4,True)
  # 6x4+3=27
 # counter bar stools along lounge top
-for i in range(8): out.append(f'<circle cx="{OX+(21.6+i*1.4)*S}" cy="{OY+8.6*S}" r="{0.25*S}" fill="#fff" stroke="#6b4f2a"/>')
+for i in range(8): out.append(f'<circle cx="{OX+(15.0+i*1.4)*S}" cy="{OY+8.6*S}" r="{0.25*S}" fill="#fff" stroke="#6b4f2a"/>')
 r(32,6,5,14,"#b9dcae","","",stroke="#3d7a2f",sw=2); tree(34.5,9,1.5); tree(34.5,17.3,1.3)
 t(34.5,12.6,"GARDEN 1",11,b=True); t(34.5,13.6,"SMOKING",11,b=True); t(34.5,14.6,"open-air",9.5)
-r(14,15,10,5,"#f6e7c1","ENTRY PLAZA · card tap",fs=11.5,ly=16)
-out.append(f'<rect x="{OX+18*S}" y="{OY+16.8*S}" width="{2*S}" height="{0.9*S}" fill="#8b5e34"/>')
-t(19,18.6,"reception",9,c="#333")
-t(14.3,19.5,"← non-members",9.5,a="start"); t(23.7,19.5,"members ↑",9.5,a="end")
+r(14,15,10,5,"#f6e7c1","ENTRY PLAZA · card tap",fs=11,ly=19.4)
+out.append(f'<rect x="{OX+20.8*S}" y="{OY+16.6*S}" width="{2*S}" height="{0.9*S}" fill="#8b5e34"/>')
+t(21.8,18.3,"reception",9,c="#333")
+t(14.4,17.9,"◀ non-members",9.5,a="start"); t(19.5,16.2,"▲ members",9.5)
 r(24,15,8,5,"#cfe8c4",stroke="#3d7a2f",sw=2)
 for (x,y) in [(25.3,18.4),(30.7,18.4)]: tree(x,y,1.0)
-t(28,16.3,"GARDEN 2 · GREEN",10.5,b=True); t(28,17.4,"no smoking",9); t(28,18.6,"water feature",9); t(28,19.5,"+ herbs",9)
+t(28.6,16.9,"GARDEN 2 · GREEN",10,b=True); t(28,17.9,"no smoking",9); t(28,18.8,"water feature",9); t(28,19.6,"+ herbs",9)
 for (x,y) in [(1,1),(13,12.4)]: pass
+
+
+def door(x,y,length,vertical,label,lx=0,ly=0):
+    if vertical:
+        out.append(f'<rect x="{OX*1+x*S-3}" y="{OY+y*S}" width="6" height="{length*S}" fill="#fff" stroke="#c0392b" stroke-width="1.5"/>')
+    else:
+        out.append(f'<rect x="{OX+x*S}" y="{OY+y*S-3}" width="{length*S}" height="6" fill="#fff" stroke="#c0392b" stroke-width="1.5"/>')
+    out.append(f'<text x="{OX+(x+lx)*S}" y="{OY+(y+ly)*S}" font-size="9" font-weight="700" fill="#c0392b" text-anchor="middle">{label}</text>')
+door(14,16.9,1.6,True,"D1",-0.7,1.0)        # plaza -> non-member dine-in
+door(3,14.6,1.0,True,"",0,0)                 # non-member -> male WC
+door(3,17.9,1.0,True,"",0,0)                 # non-member -> female WC
+door(18.5,15,2.0,False,"D2",-0.6,0.95)       # plaza -> members lounge
+door(14,10.0,1.8,True,"D3",-0.7,0.9)         # lounge -> members dining
+door(28.2,8,1.6,False,"D4",-0.6,0.95)       # lounge -> toilet corridor
+door(28.2,6,1.6,False,"",0,0)                # corridor -> toilets
+door(32,10.2,1.6,True,"D5",-0.7,-0.3)         # lounge -> garden 1 (smoking)
+door(27.4,15,1.6,False,"D6",-1.0,0.95)       # lounge -> garden 2
+door(14,2,2.0,True,"PASS",0.0,-0.3)          # kitchen -> dining serving hatch
+door(11.3,13.25,1.6,False,"staff",0.8,-0.35) # dining -> non-member (staff only, for serving)
+door(37.5,6,2.0,False,"service",1.0,0.95)   # BOH -> service path
+door(17.5,20,4.5,False,"MAIN ENTRY",2.25,0.9) # walkway -> plaza
 
 # north arrow + scale
 out.append(f'<g transform="translate({OX+W*S+40},{OY+20})"><path d="M0 30 L10 0 L20 30 L10 22 Z" fill="#333"/><text x="10" y="45" font-size="12" text-anchor="middle">N (rear)</text></g>')
@@ -99,6 +120,7 @@ lx=OX+W*S+30; ly=OY+90
 for i,(k,c) in enumerate(L):
     out.append(f'<rect x="{lx}" y="{ly+i*22}" width="16" height="14" fill="{c}" stroke="#333"/><text x="{lx+22}" y="{ly+i*22+12}" font-size="12">{k}</text>')
 summ=["SEATS: 40 + 35 members","          + 25 non-members = 100","CARS: 25 (incl. 1 accessible)","Stall 2.5×5 m · aisle 6 m","Covered build ≈ 450 m²","Parking ≈ 640 m²","Toilets: members + non-member M/F"]
+summ+=["","RED = DOORS","Non-member: entry → plaza","  → D1 → own seats + own WCs","Member: entry → card tap","  → D2 lounge → D3 dining,","  D4 toilets, D5 smoking garden,","  D6 green garden","Food: kitchen PASS → dining;","  staff door → non-members"]
 for i,s in enumerate(summ):
     out.append(f'<text x="{lx}" y="{ly+200+i*18}" font-size="12"{" font-weight=\"700\"" if i<3 else ""}>{s}</text>')
 CW=OX+W*S+250; CH=OY+H*S+70
