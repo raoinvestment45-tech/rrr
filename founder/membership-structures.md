@@ -119,3 +119,57 @@ bonus, and set clear expiry and refund rules in the member terms.
   from GST on café sales. Get the treatment confirmed before printing prices.
 - Write member terms covering expiry, refunds, transfer, minimum-spend deductions
   and what happens to the balance if the café closes.
+
+---
+
+## Chosen direction: the gaming-zone balance-card model
+
+This works like an arcade or gaming-zone card: buy the card once, recharge it, get
+bonus credit on bigger recharges, and swipe for everything. It is structure C with
+a small card fee, and it replaces the monthly minimum spend with a **minimum
+recharge + validity** rule. It is simpler than a penalty, and people already
+understand it.
+
+### The five settings
+| Setting | What it is | Placeholder |
+|---|---|---|
+| Card fee | One-time, non-refundable, buys the physical/digital card and entry rights | ₹999 (or ₹2,999 for a founding card) |
+| Minimum recharge | The smallest top-up allowed; this *is* your minimum spend | ₹1,000 |
+| Recharge packs | Bigger recharge = bigger bonus | see table |
+| Validity | Balance (or bonus) expires after N months of no recharge | 12 months; bonus 6 months |
+| Perks by lifetime recharge | Status levels unlocked by total recharged | Seed → Forest |
+
+### Recharge packs (placeholder)
+| Pack | Pay | Bonus | Credit | Bonus as cost to you* |
+|---|---|---|---|---|
+| Seed | ₹1,000 | 0% | ₹1,000 | ₹0 |
+| Sapling | ₹3,000 | 5% | ₹3,150 | ₹53 |
+| Tree | ₹5,000 | 10% | ₹5,500 | ₹175 |
+| Forest | ₹10,000 | 15% | ₹11,500 | ₹525 |
+
+*Bonus credit costs you only its food cost, not its face value. At a 35% food cost,
+₹1,500 of bonus costs about ₹525.
+
+### Rules that make it work
+- **Bonus is spent last, and expires sooner** than paid balance (e.g. 6 months vs
+  12 months). This keeps bonuses from piling up as a liability.
+- **Entry needs the card with at least the minimum balance** (e.g. ₹300). This acts
+  as a soft minimum spend without penalising anyone.
+- **Guest swipes:** a member can pay for a guest from their card, which brings in
+  new members. Optionally add a small guest surcharge.
+- **Level perks** (lifetime recharge ₹25k / ₹75k / ₹1.5L): free drink each month,
+  priority event booking, guest passes, name on the founders' wall.
+- **Founding card:** the first 200 cards at a higher fee get a permanent extra 5%
+  on every recharge. This is your pre-sale before the build.
+
+### The numbers to work out with `/founder-cfo`
+```
+Effective discount  = bonus credit ÷ (paid + bonus)       Forest: 1,500 ÷ 11,500 = 13%
+Must hold:          effective discount < gross margin − target profit margin
+Monthly cash in     = active members × average recharge per month
+Card-fee income     = new members × card fee  (one-time; do not count on it monthly)
+Liability           = total unspent balance on all cards  (owed in food; keep cash to cover it)
+```
+Breakage (balance that expires unspent) is a bonus, not a plan. Write the expiry
+rule clearly on the card and in the terms, and confirm GST and RBI closed-system
+treatment with a CA.
